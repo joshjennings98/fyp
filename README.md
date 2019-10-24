@@ -1,2 +1,3 @@
-# fyp
-Event Driven Spiking Neural Networks
+# Event Driven Spiking Neural Networks
+
+My Final Year Project.

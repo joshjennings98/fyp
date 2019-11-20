@@ -1,0 +1,49 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Objects, shared objects
+*.o
+*.so
+
+# Emacs
+*~
+
+/demos
+/bin
+/providers
+/.vagrant
+/testing
+/derived
+
+# OS X profiling
+instruments*.trace
+
+# temporaries in root directory
+/*.xml
+/*.snap
+/*.gz
+/CMakeFiles
+/cmake-build-*
+/external/rng-svg
+/pypy-env
+/*.log
+/.tmp
+/cmake-build-*
+/.vscode
+
+/*.xml
+/*.gz
+/*.elf
+/*.svg
+/*.dot
+.mypy_cache
+/.tmp*
+/.idea
+
+a.out
+perf.data
+perf.data.old
+/apps/ising_spin_fix/ising_spin_fix_ref
+/my-pypy3-env
+/pypy3-virtualenv

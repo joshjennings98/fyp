@@ -36,16 +36,7 @@ for neuron in neurons:
     y = "".join(connections)
     edgeInstances.append(y)
 
-
-'''
-edgeInstances = [
-    "   <EdgeI path=\"n_1:input-n_0:fire\"><P>\"weight\":1.0</P></EdgeI>\n"
-    "   <EdgeI path=\"n_2:input-n_1:fire\"><P>\"weight\":1.0</P></EdgeI>\n"
-    "   <EdgeI path=\"n_3:input-n_2:fire\"><P>\"weight\":1.0</P></EdgeI>\n"
-    "   <EdgeI path=\"n_4:input-n_3:fire\"><P>\"weight\":1.0</P></EdgeI>\n"
-    "   <EdgeI path=\"n_0:input-n_4:fire\"><P>\"weight\":1.0</P></EdgeI>"
-]
-'''
+# To Do: Make this thing nicer using multiline strings or something
 graph = [
     "<?xml version='1.0'?>\n",
     "<Graphs xmlns=\"https://poets-project.org/schemas/virtual-graph-schema-v3\">\n",

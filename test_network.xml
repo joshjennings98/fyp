@@ -89,15 +89,13 @@
    <DevI id="n_2" type="neuron"><P>"fire_init":0</P></DevI>
    <DevI id="n_3" type="neuron"><P>"fire_init":0</P></DevI>
    <DevI id="n_4" type="neuron"><P>"fire_init":0</P></DevI>
- 
   </DeviceInstances> 
   <EdgeInstances> 
-<EdgeI path="n_1:input-n_0:fire"><P>"weight":1.0</P></EdgeI>
-<EdgeI path="n_2:input-n_1:fire"><P>"weight":1.0</P></EdgeI>
-<EdgeI path="n_3:input-n_2:fire"><P>"weight":1.0</P></EdgeI>
-<EdgeI path="n_4:input-n_3:fire"><P>"weight":1.0</P></EdgeI>
-<EdgeI path="n_0:input-n_4:fire"><P>"weight":1.0</P></EdgeI>
- 
+   <EdgeI path="n_1:input-n_0:fire"><P>"weight":1.0</P></EdgeI>
+   <EdgeI path="n_2:input-n_1:fire"><P>"weight":1.0</P></EdgeI>
+   <EdgeI path="n_3:input-n_2:fire"><P>"weight":1.0</P></EdgeI>
+   <EdgeI path="n_4:input-n_3:fire"><P>"weight":1.0</P></EdgeI>
+   <EdgeI path="n_0:input-n_4:fire"><P>"weight":1.0</P></EdgeI>
   </EdgeInstances> 
  </GraphInstance> 
 </Graphs> 

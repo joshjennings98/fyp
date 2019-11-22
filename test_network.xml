@@ -1,102 +1,111 @@
 <?xml version='1.0'?>
 <Graphs xmlns="https://poets-project.org/schemas/virtual-graph-schema-v3">
-<GraphType xmlns="https://poets-project.org/schemas/virtual-graph-schema-v3" id="test_network"> 
-<Properties> 
-    <Scalar name="max_t" type="uint32_t"/> 
-    <Scalar name="neuron_count" type="uint32_t"/> 
-</Properties> 
-<SharedCode><![CDATA[ 
-    #ifdef POETS_LEGACY_HAS_HANDLER_EXIT 
-    #define _do_handler_exit(code) handler_exit(code) 
-    #else 
-    #define _do_handler_exit(code) ((void)0) 
-    #endif 
-
-    #define fake_handler_exit(code) \
-    { \
-        if((code)==0){ \
-            handler_log(0, "_HANDLER_EXIT_SUCCESS_9be65737_"); \
-        }else{ \
-            handler_log(0, "_HANDLER_EXIT_FAIL_9be65737_"); \
-        } \
-        _do_handler_exit(code); \
-    } 
-    ]]></SharedCode> 
-<MessageTypes> 
-    <MessageType id="synapse"> 
-    <Message> 
-        <Scalar name="fired" type="int8_t"/> 
-    </Message> 
-    </MessageType> 
-</MessageTypes> 
-<DeviceTypes> 
-    <DeviceType id="neuron"> 
-    <Properties> 
-        <Scalar name="seed" type="uint32_t"/> 
-        <Scalar name="fire_init" type="int8_t" default="0"/> 
-    </Properties> 
-    <State> 
-        <Scalar name="fireValue" type="int8_t"/> 
-        <Scalar name="rts" type="uint32_t"/> 
-        <Scalar name="t" type="uint32_t"/> 
-    </State> 
-    <OnInit><![CDATA[    
-        if (deviceProperties->fire_init == 1) { 
-        handler_log(1, "Fired Spike"); 
-        deviceState->fireValue = true; 
-        } else { 
-        deviceState->fireValue = false; 
-        }		   
-        ]]></OnInit> 
-    <InputPin name="input" messageTypeId="synapse"> 
+    <GraphType xmlns="https://poets-project.org/schemas/virtual-graph-schema-v3" id="test_network"> 
         <Properties> 
-        <Scalar name="weight" type="float"/> 
+            <Scalar name="max_t" type="uint32_t"/> 
+            <Scalar name="neuron_count" type="uint32_t"/> 
         </Properties> 
-        <OnReceive><![CDATA[ 
-            if(message->fired){ 
-            handler_log(1, "Recieved Spike"); 
-            deviceState->fireValue = true; 
+        <SharedCode><![CDATA[ 
+            #ifdef POETS_LEGACY_HAS_HANDLER_EXIT 
+            #define _do_handler_exit(code) handler_exit(code) 
+            #else 
+            #define _do_handler_exit(code) ((void)0) 
+            #endif 
+
+            #define fake_handler_exit(code) \
+            { \
+                if((code)==0){ \
+                    handler_log(0, "_HANDLER_EXIT_SUCCESS_9be65737_"); \
+                }else{ \
+                    handler_log(0, "_HANDLER_EXIT_FAIL_9be65737_"); \
+                } \
+                _do_handler_exit(code); \
             } 
-        deviceState->rts = RTS_FLAG_fire; 
-        ]]></OnReceive> 
-    </InputPin> 
-    <OutputPin name="fire" messageTypeId="synapse" indexed="false"> 
-        <OnSend><![CDATA[ 
-            message->fired=deviceState->fireValue; // Add conditional in future for v_threshold 
-        handler_log(1, "Fired Spike"); 
-        deviceState->fireValue = false; 
-        deviceState->t++; 
-            if(deviceState->t > graphProperties->max_t / graphProperties->neuron_count){ 
-                *doSend=0; 
-                fake_handler_exit(0); 
-            } 
-        ]]></OnSend> 
-    </OutputPin> 
-    <ReadyToSend><![CDATA[ 
-            *readyToSend = (deviceState->fireValue == true) ? RTS_FLAG_fire : 0; 
-        ]]></ReadyToSend> 
-    </DeviceType> 
-</DeviceTypes> 
-</GraphType> 
-<GraphInstance id="test_network_output" graphTypeId="test_network"> 
-<Properties> 
-    "max_t":100,
-    "neuron_count":5
-</Properties> 
-<DeviceInstances> 
-  <DevI id="n_0" type="neuron"><P>"fire_init":1</P></DevI>
-  <DevI id="n_1" type="neuron"><P>"fire_init":0</P></DevI>
-  <DevI id="n_2" type="neuron"><P>"fire_init":0</P></DevI>
-  <DevI id="n_3" type="neuron"><P>"fire_init":0</P></DevI>
-  <DevI id="n_4" type="neuron"><P>"fire_init":0</P></DevI>
-    </DeviceInstances> 
-<EdgeInstances> 
-   <EdgeI path="n_1:input-n_0:fire"><P>"weight":1.0</P></EdgeI>
-   <EdgeI path="n_2:input-n_1:fire"><P>"weight":1.0</P></EdgeI>
-   <EdgeI path="n_3:input-n_2:fire"><P>"weight":1.0</P></EdgeI>
-   <EdgeI path="n_4:input-n_3:fire"><P>"weight":1.0</P></EdgeI>
-   <EdgeI path="n_0:input-n_4:fire"><P>"weight":1.0</P></EdgeI>
-    </EdgeInstances> 
-</GraphInstance> 
+            ]]></SharedCode> 
+        <MessageTypes> 
+            <MessageType id="synapse"> 
+                <Message> 
+                    <Scalar name="fired" type="int8_t"/> 
+                </Message> 
+            </MessageType> 
+        </MessageTypes> 
+        <DeviceTypes> 
+            <DeviceType id="neuron"> 
+                <Properties> 
+                    <Scalar name="seed" type="uint32_t"/> 
+                    <Scalar name="fire_on_init" type="int8_t" default="0"/> 
+                    <Scalar name="test_variable" type="int8_t" default="1"/> 
+                </Properties> 
+                <State> 
+                    <Scalar name="fireValue" type="int8_t"/> 
+                    <Scalar name="rts" type="uint32_t"/> 
+                    <Scalar name="t" type="uint32_t"/> 
+                    <Scalar name="test_variable" type="int8_t"/>
+                </State> 
+                <OnInit><![CDATA[    
+                    // Initialise state values
+                    deviceState->test_variable = deviceProperties->test_variable; // Set initial test_variable value
+                    
+                    // whether to fire first cycle == 1
+                    if (deviceProperties->fire_on_init == 1) { 
+                        handler_log(1, "Fired Spike"); 
+                        deviceState->fireValue = true; 
+                    } else { 
+                        deviceState->fireValue = false; 
+                    }		   
+                    ]]></OnInit> 
+                <InputPin name="input" messageTypeId="synapse"> 
+                    <Properties> 
+                    <Scalar name="weight" type="float"/> 
+                    </Properties> 
+                    <OnReceive><![CDATA[ 
+                        if(message->fired){ 
+                            handler_log(1, "Recieved Spike"); 
+                            deviceState->fireValue = true; 
+                        } 
+                    deviceState->rts = RTS_FLAG_fire; 
+                    ]]></OnReceive> 
+                </InputPin> 
+                <OutputPin name="fire" messageTypeId="synapse" indexed="false"> 
+                    <OnSend><![CDATA[ 
+                        // Assignments
+                        int8_t &test_variable = deviceState->test_variable; // Assign test_variable
+
+                        message->fired=deviceState->fireValue; // Add conditional in future for v_threshold 
+                        handler_log(1, "Fired Spike"); 
+                        deviceState->fireValue = false; 
+                        deviceState->t++; 
+                            if(deviceState->t > graphProperties->max_t / graphProperties->neuron_count){ 
+                                *doSend=0; 
+                                fake_handler_exit(0); 
+                            } 
+                    ]]></OnSend> 
+                </OutputPin> 
+                <ReadyToSend><![CDATA[ 
+                        *readyToSend = (deviceState->fireValue == true) ? RTS_FLAG_fire : 0; 
+                    ]]></ReadyToSend> 
+            </DeviceType> 
+        </DeviceTypes> 
+    </GraphType> 
+    <GraphInstance id="test_network_output" graphTypeId="test_network"> 
+        <Properties> 
+            "max_t":100,
+            "neuron_count":5
+        </Properties> 
+        <DeviceInstances> 
+            <DevI id="n_0" type="neuron"><P>"fire_on_init":1,"test_variable":1</P></DevI>
+            <DevI id="n_1" type="neuron"><P>"fire_on_init":0,"test_variable":0</P></DevI>
+            <DevI id="n_2" type="neuron"><P>"fire_on_init":0,"test_variable":0</P></DevI>
+            <DevI id="n_3" type="neuron"><P>"fire_on_init":0,"test_variable":0</P></DevI>
+            <DevI id="n_4" type="neuron"><P>"fire_on_init":0,"test_variable":0</P></DevI>
+        </DeviceInstances> 
+        <EdgeInstances> 
+            <EdgeI path="n_1:input-n_0:fire"><P>"weight":1.0</P></EdgeI>
+            <EdgeI path="n_2:input-n_1:fire"><P>"weight":1.0</P></EdgeI>
+            <EdgeI path="n_3:input-n_2:fire"><P>"weight":1.0</P></EdgeI>
+            <EdgeI path="n_4:input-n_3:fire"><P>"weight":1.0</P></EdgeI>
+            <EdgeI path="n_0:input-n_4:fire"><P>"weight":1.0</P></EdgeI>
+        </EdgeInstances> 
+    </GraphInstance> 
 </Graphs> 
     

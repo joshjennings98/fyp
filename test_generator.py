@@ -14,7 +14,7 @@ def makeGraph(neurons, name, maxt):
         device = "  <DevI id=\"%s\" type=\"neuron\"><P>\"fire_init\":%i</P></DevI>\n" % (neuron.name, neuron.fire_init)
         deviceInstances.append(device)
         connections = []
-        for connection in range(len(neuron.connections)): # change so only does connections set to 1
+        for connection in range(len(neuron.connections)): 
             if neuron.connections[connection] == 1: 
                 weight = 1.0 # change to random value
                 edge = "   <EdgeI path=\"%s:input-%s:fire\"><P>\"weight\":%s</P></EdgeI>\n" % (neurons[connection].name, neuron.name, weight)

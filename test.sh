@@ -1,4 +1,4 @@
-python3 test_network.py
+python3 test_generator_1.py
 
 graph_schema-4.2.0/tools/compile_graph_as_provider.sh test_network.xml
 

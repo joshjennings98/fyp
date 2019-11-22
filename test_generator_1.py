@@ -8,19 +8,80 @@ class Neuron(object):
         self.connections = connections
 
 maxt = 100
-neurons = 5
 
 name = "test_network"
 
 neurons = [ # Params are "name : type : value"
-    Neuron("n_0", ["test_variable : int8_t : 1"], 1, [0, 1, 0, 0, 0]),
-    Neuron("n_1", ["test_variable : int8_t : 0"], 0, [0, 0, 1, 0, 0]),
-    Neuron("n_2", ["test_variable : int8_t : 0"], 0, [0, 0, 0, 1, 0]),
-    Neuron("n_3", ["test_variable : int8_t : 0"], 0, [0, 0, 0, 0, 1]),
-    Neuron("n_4", ["test_variable : int8_t : 0"], 0, [1, 0, 0, 0, 0]),
+    Neuron("n_0", ["test_variable : float : 0.24565"], 1, [0, 1, 0, 0, 0]),
+    Neuron("n_1", ["test_variable : float : 0.0"], 0, [0, 0, 1, 0, 0]),
+    Neuron("n_2", ["test_variable : float : 0.0"], 0, [0, 0, 0, 1, 0]),
+    Neuron("n_3", ["test_variable : float : 0.0"], 0, [0, 0, 0, 0, 1]),
+    Neuron("n_4", ["test_variable : float : 0.0"], 0, [1, 0, 0, 0, 0]),
 ]
 
-def makeGraph(neurons, name, maxt):
+def makeGraph(neurons, name, maxt, globalClock = False):
+    
+    def makeClock(clock):
+        if clock:
+            return """      
+            <DeviceType id="clock">
+                <Properties>
+                    <Scalar name="neuronCount" type="uint32_t"/>
+                </Properties>
+                <State>
+                    <Scalar name="waitCount" type="uint32_t"/>
+                    <Scalar name="t" type="uint32_t"/>
+                </State>
+                <OnInit><![CDATA[
+                    deviceState->waitCount = deviceProperties->neuronCount;
+                    ]]>
+                </OnInit>
+                <InputPin name="tock" messageTypeId="tick">
+                    <OnReceive><![CDATA[
+                        assert(deviceState->waitCount > 0);
+                        deviceState->waitCount--;
+                        ]]>
+                    </OnReceive>
+                </InputPin>
+                <OutputPin name="tick" messageTypeId="tick" indexed="false">
+                    <OnSend><![CDATA[
+                    assert(deviceState->waitCount==0);
+                    deviceState->waitCount=deviceProperties->neuronCount;
+                    deviceState->t++;
+                    if(deviceState->t > graphProperties->max_t){
+                        *doSend=false;
+                        fake_handler_exit(0);
+                    }
+                    ]]>
+                    </OnSend>
+                </OutputPin>
+                <ReadyToSend><![CDATA[
+                    *readyToSend = deviceState->waitCount==0 ? RTS_FLAG_tick : 0;
+                    ]]>
+                    </ReadyToSend>
+                </DeviceType>"""
+        else:
+            return ""
+
+    def makeTick(clock):
+        if clock:
+            #return """
+            #<MessageType id="tick">
+            #    <Message>
+            #        <Scalar name="firings" type="uint32_t"/>
+            #    </Message>
+            #</MessageType>"""
+            return "<MessageType id=\"tick\"/>"
+        else:
+            return ""
+
+    def addClock(clock):
+        if clock:
+            return """
+            <DevI id="clock" type="clock"><P>"neuronCount":%s</P></DevI>""" % str(len(deviceInstances))
+        else:
+            return ""
+    
     deviceInstances = []
     edgeInstances = []     
 
@@ -40,6 +101,13 @@ def makeGraph(neurons, name, maxt):
                 edge = "            <EdgeI path=\"%s:input-%s:fire\"><P>\"weight\":%s</P></EdgeI>\n" % (neurons[connection].name, neuron.name, weight)
                 connections.append(edge)
         edgeInstances.append("".join(connections))
+        if globalClock:
+            edgeInstances.append("            <EdgeI path=\"%s:tick-clock:tick\" />\n" % (neuron.name))
+            edgeInstances.append("            <EdgeI path=\"clock:tock-%s:tock\" />\n" % (neuron.name))
+    
+    clock = makeClock(globalClock)
+    tick = makeTick(globalClock)
+    clockNeuron = addClock(globalClock)
 
     graph = """<?xml version='1.0'?>
 <Graphs xmlns="https://poets-project.org/schemas/virtual-graph-schema-v3">
@@ -69,10 +137,10 @@ def makeGraph(neurons, name, maxt):
             <MessageType id="synapse"> 
                 <Message> 
                     <Scalar name="fired" type="int8_t"/> 
-                </Message> 
-            </MessageType> 
+                </Message>
+            </MessageType>                %s
         </MessageTypes> 
-        <DeviceTypes> 
+        <DeviceTypes>%s
             <DeviceType id="neuron"> 
                 <Properties> 
                     <Scalar name="seed" type="uint32_t"/> 
@@ -118,10 +186,10 @@ def makeGraph(neurons, name, maxt):
                         handler_log(1, "Fired Spike"); 
                         deviceState->fireValue = false; 
                         deviceState->t++; 
-                            if(deviceState->t > graphProperties->max_t / graphProperties->neuron_count){ 
-                                *doSend=0; 
-                                fake_handler_exit(0); 
-                            } 
+                        //if(deviceState->t > graphProperties->max_t / graphProperties->neuron_count){ 
+                        //    *doSend=0; 
+                        //    fake_handler_exit(0); 
+                        //} 
                     ]]></OnSend> 
                 </OutputPin> 
                 <ReadyToSend><![CDATA[ 
@@ -135,13 +203,13 @@ def makeGraph(neurons, name, maxt):
             "max_t":%i,
             "neuron_count":%i
         </Properties> 
-        <DeviceInstances> 
+        <DeviceInstances>        %s
 %s        </DeviceInstances> 
         <EdgeInstances> 
 %s        </EdgeInstances> 
     </GraphInstance> 
 </Graphs> 
-    """ % (name, properties, states, inits, assignments, name, name, maxt, len(deviceInstances), "".join(deviceInstances), "".join(edgeInstances))
+    """ % (name, tick, clock, properties, states, inits, assignments, name, name, maxt, len(deviceInstances), clockNeuron, "".join(deviceInstances), "".join(edgeInstances))
 
     return graph
 
@@ -155,6 +223,6 @@ def saveGraph(graph, filename):
     print("Graph saved as:", filename)
 
 
-graph = makeGraph(neurons, name, maxt)
+graph = makeGraph(neurons, name, maxt, False)
 
 saveGraph(graph, "test_network.xml")

@@ -7,17 +7,23 @@ class Neuron(object):
         self.fire_on_init = fire_on_init
         self.connections = connections
 
+class InputNeuron(object):
+    def __init__(self, name, fire_on, connections):
+        self.name = name
+        self.fire_on = fire_on
+        self.connections = connections
+
 maxt = 30
 
 name = "test_network"
 
-
 neurons = [ # Params are "name : type : value"
+    InputNeuron("i_0", "t % 5 == 0", [1, 0, 0, 0, 0]),
     Neuron("n_0", ["test_variable : float : 0.24565"],  1, [0, 1, 0, 0, 0]),
     Neuron("n_1", ["test_variable : float : 0.0"],      0, [0, 0, 1, 0, 0]),
     Neuron("n_2", ["test_variable : float : 100.0"],    0, [0, 0, 0, 1, 0]),
     Neuron("n_3", ["test_variable : float : 0.0"],      0, [0, 0, 0, 0, 1]),
-    Neuron("n_4", ["test_variable : float : 0.0"],      0, [1, 0, 0, 0, 0]),
+    #Neuron("n_4", ["test_variable : float : 0.0"],      0, [1, 0, 0, 0, 0]),
 ]
 
 def makeGraph(neurons, name, maxt, globalClock = False):
@@ -96,12 +102,10 @@ def makeGraph(neurons, name, maxt, globalClock = False):
     deviceInstances = []
     edgeInstances = []     
 
-    """
     properties = '\n        '.join(list(map(lambda el : "<Scalar name=\"%s\" type=\"%s\" default=\"%s\"/>" % (el[0], el[1], el[2]), neurons[0].params)))
     states = '\n        '.join(list(map(lambda el : "<Scalar name=\"%s\" type=\"%s\"/>" % (el[0], el[1]), neurons[0].params)))
     inits = '\n        '.join(list(map(lambda el : "deviceState->%s = deviceProperties->%s; // Set initial %s value" % (el[0], el[0], el[0]), neurons[0].params)))
     assignments = '\n        '.join(list(map(lambda el : "%s &%s = deviceState->%s; // Assign %s" % (el[1], el[0], el[0], el[0]), neurons[0].params)))
-    """
 
     def makeDeviceType(clock):
         if clock:
@@ -241,88 +245,8 @@ def makeGraph(neurons, name, maxt, globalClock = False):
                     ]]></ReadyToSend> 
             </DeviceType>""" % (properties, states, inits, assignments)
     
-    def makeNeuronType(neuron : Neuron) -> str:
-        properties = '\n        '.join(list(map(lambda el : "<Scalar name=\"%s\" type=\"%s\" default=\"%s\"/>" % (el[0], el[1], el[2]), neuron.params)))
-        states = '\n        '.join(list(map(lambda el : "<Scalar name=\"%s\" type=\"%s\"/>" % (el[0], el[1]), neuron.params)))
-        inits = '\n        '.join(list(map(lambda el : "deviceState->%s = deviceProperties->%s; // Set initial %s value" % (el[0], el[0], el[0]), neuron.params)))
-        assignments = '\n        '.join(list(map(lambda el : "%s &%s = deviceState->%s; // Assign %s" % (el[1], el[0], el[0], el[0]), neuron.params)))
-        
-        return"""<DeviceType id="neuron"> 
-                <Properties> 
-                    <Scalar name="seed" type="uint32_t"/> 
-                    <Scalar name="fire_on_init" type="int8_t" default="0"/> 
-                    %s 
-                </Properties> 
-                <State> 
-                    <Scalar name="fireValue" type="int8_t"/> 
-                    <Scalar name="rts" type="uint32_t"/> 
-                    <Scalar name="t" type="uint32_t"/> 
-                    %s
-                </State> 
-                <OnInit><![CDATA[    
-                    // Initialise state values
-                    %s
-                    
-                    // whether to fire first cycle == 1
-                    if (deviceProperties->fire_on_init == 1) { 
-                        handler_log(1, "Fired Spike"); 
-                        deviceState->fireValue = true; 
-                    } else { 
-                        deviceState->fireValue = false; 
-                    }		   
-                    ]]></OnInit> 
-                <InputPin name="input" messageTypeId="synapse"> 
-                    <Properties> 
-                    <Scalar name="weight" type="float"/> 
-                    </Properties> 
-                    <OnReceive><![CDATA[ 
-                        if(message->fired){ 
-                            handler_log(1, "Recieved Spike"); 
-                            deviceState->fireValue = true; 
-                        } 
-                        deviceState->rts = RTS_FLAG_fire; 
-                    ]]></OnReceive> 
-                </InputPin> 
-                <OutputPin name="fire" messageTypeId="synapse"> 
-                    <OnSend><![CDATA[ 
-                        // Assignments
-                        %s
+    devices = makeDeviceType(globalClock)
 
-                        message->fired=deviceState->fireValue; // Add conditional in future for v_threshold 
-                        handler_log(1, "Fired Spike"); 
-                        deviceState->fireValue = false; 
-                        deviceState->t++; 
-                        // /*
-                        if(deviceState->t > graphProperties->max_t){ 
-                            *doSend=0; 
-                            fake_handler_exit(0); 
-                        }
-                        // */ 
-                    ]]></OnSend> 
-                </OutputPin> 
-                <ReadyToSend><![CDATA[ 
-                        *readyToSend = (deviceState->fireValue == true) ? RTS_FLAG_fire : 0; 
-                    ]]></ReadyToSend> 
-            </DeviceType>""" % (properties, states, inits, assignments)
-
-
-
-    devices = makeNeuronType(neurons[0])
-    
-    """
-    for neuron in inputNeurons:
-        device = "            <DevI id=\"%s\" type=\"input_neuron\"></DevI>\n" % (neuron.name)
-        deviceInstances.append(device)
-        connections = []
-        for connection in range(len(neuron.connections)): 
-            if neuron.connections[connection] == 1: 
-                weight = 1.0 # change to random value
-                edge = "            <EdgeI path=\"%s:input-%s:fire\"><P>\"weight\":%s</P></EdgeI>\n" % (neurons[connection].name, neuron.name, weight)
-                connections.append(edge)
-                edge = "            <EdgeI path=\"%s:input1-%s:fire1\"><P>\"weight\":%s</P></EdgeI>\n" % (neuron.name, neuron.name, weight)
-                connections.append(edge)
-        edgeInstances.append("".join(connections))
-    """
     for neuron in neurons:
         neuronParams = ','.join(list(map(lambda el : "\"%s\":%s" % (el[0], el[2]), neuron.params)))
         device = "            <DevI id=\"%s\" type=\"neuron\"><P>\"fire_on_init\":%s,%s</P></DevI>\n" % (neuron.name, str(neuron.fire_on_init), neuronParams)
@@ -334,20 +258,13 @@ def makeGraph(neurons, name, maxt, globalClock = False):
                 edge = "            <EdgeI path=\"%s:input-%s:fire\"><P>\"weight\":%s</P></EdgeI>\n" % (neurons[connection].name, neuron.name, weight)
                 connections.append(edge)
         edgeInstances.append("".join(connections))
-        
-
-
-        """
         if globalClock:
             edgeInstances.append("            <EdgeI path=\"%s:tick-clock:tick\" />\n" % (neuron.name))
             edgeInstances.append("            <EdgeI path=\"clock:tock-%s:tock\" />\n" % (neuron.name))
-        """
     
-    """
     clock = makeClock(globalClock)
     tick = makeTick(globalClock)
     clockNeuron = addClock(globalClock)
-    """
 
 
     graph = """<?xml version='1.0'?>
@@ -379,11 +296,6 @@ def makeGraph(neurons, name, maxt, globalClock = False):
                 <Message> 
                     <Scalar name="fired" type="int8_t"/> 
                 </Message>
-            </MessageType>
-            <MessageType id="synapse1"> 
-                <Message> 
-                    <Scalar name="fired1" type="int8_t"/> 
-                </Message>
             </MessageType>                %s
         </MessageTypes> 
         <DeviceTypes>%s
@@ -401,8 +313,8 @@ def makeGraph(neurons, name, maxt, globalClock = False):
 %s        </EdgeInstances> 
     </GraphInstance> 
 </Graphs> 
-    """ % (name, "", "", devices, name, name, maxt, len(deviceInstances), "", "".join(deviceInstances), "".join(edgeInstances))
-    # tick, clock, clockNeuron
+    """ % (name, tick, clock, devices, name, name, maxt, len(deviceInstances), clockNeuron, "".join(deviceInstances), "".join(edgeInstances))
+
     return graph
 
 def saveGraph(graph, filename):

@@ -27,6 +27,11 @@
                 <Message> 
                     <Scalar name="fired" type="int8_t"/> 
                 </Message>
+            </MessageType>
+            <MessageType id="synapse1"> 
+                <Message> 
+                    <Scalar name="fired1" type="int8_t"/> 
+                </Message>
             </MessageType>                
         </MessageTypes> 
         <DeviceTypes>
@@ -63,10 +68,10 @@
                             handler_log(1, "Recieved Spike"); 
                             deviceState->fireValue = true; 
                         } 
-                    deviceState->rts = RTS_FLAG_fire; 
+                        deviceState->rts = RTS_FLAG_fire; 
                     ]]></OnReceive> 
                 </InputPin> 
-                <OutputPin name="fire" messageTypeId="synapse" indexed="false"> 
+                <OutputPin name="fire" messageTypeId="synapse"> 
                     <OnSend><![CDATA[ 
                         // Assignments
                         float &test_variable = deviceState->test_variable; // Assign test_variable
@@ -75,27 +80,29 @@
                         handler_log(1, "Fired Spike"); 
                         deviceState->fireValue = false; 
                         deviceState->t++; 
-                        //if(deviceState->t > graphProperties->max_t / graphProperties->neuron_count){ 
-                        //    *doSend=0; 
-                        //    fake_handler_exit(0); 
-                        //} 
+                        // /*
+                        if(deviceState->t > graphProperties->max_t){ 
+                            *doSend=0; 
+                            fake_handler_exit(0); 
+                        }
+                        // */ 
                     ]]></OnSend> 
                 </OutputPin> 
                 <ReadyToSend><![CDATA[ 
                         *readyToSend = (deviceState->fireValue == true) ? RTS_FLAG_fire : 0; 
                     ]]></ReadyToSend> 
-            </DeviceType> 
+            </DeviceType>
         </DeviceTypes> 
     </GraphType> 
     <GraphInstance id="test_network_output" graphTypeId="test_network"> 
         <Properties> 
-            "max_t":100,
+            "max_t":30,
             "neuron_count":5
         </Properties> 
         <DeviceInstances>        
             <DevI id="n_0" type="neuron"><P>"fire_on_init":1,"test_variable":0.24565</P></DevI>
             <DevI id="n_1" type="neuron"><P>"fire_on_init":0,"test_variable":0.0</P></DevI>
-            <DevI id="n_2" type="neuron"><P>"fire_on_init":0,"test_variable":0.0</P></DevI>
+            <DevI id="n_2" type="neuron"><P>"fire_on_init":0,"test_variable":100.0</P></DevI>
             <DevI id="n_3" type="neuron"><P>"fire_on_init":0,"test_variable":0.0</P></DevI>
             <DevI id="n_4" type="neuron"><P>"fire_on_init":0,"test_variable":0.0</P></DevI>
         </DeviceInstances> 

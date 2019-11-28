@@ -16,3 +16,8 @@
 ## End of Autumn Term
 
 * Code for generating arbitrary size CUBA
+
+
+* Look at abrrier izikovich
+* make input neurons
+* do everything using GALS

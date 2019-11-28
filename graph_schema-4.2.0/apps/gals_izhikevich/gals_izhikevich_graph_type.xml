@@ -115,6 +115,7 @@
 		  u=u+deviceProperties->a*(deviceProperties->b*v-u);                 // stability
 
 		  message->fired = v >= 30;
+		  
 		  if(message->fired){
 			v=deviceProperties->c;
 			u += deviceProperties->d;
@@ -127,11 +128,11 @@
 
 		  handler_log(3, "fanin=%d", deviceProperties->fanin);
 
-      deviceState->t++;
-      if(deviceState->t > graphProperties->max_t){
-        *doSend=0;
-        fake_handler_exit(0);
-      }
+	          deviceState->t++;
+	          if(deviceState->t > graphProperties->max_t){
+		    *doSend=0;
+		    fake_handler_exit(0);
+	          }
 		  ]]></OnSend>
         </OutputPin>
         <ReadyToSend><![CDATA[

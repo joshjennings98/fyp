@@ -1,6 +1,6 @@
-# Interim Report
+# Event Driven Spiking Neural Networks Interim Report
 
-- [Interim Report](#interim-report)
+- [Event Driven Spiking Neural Networks Interim Report](#event-driven-spiking-neural-networks-interim-report)
   - [Abstract](#abstract)
   - [Introduction](#introduction)
   - [Background](#background)

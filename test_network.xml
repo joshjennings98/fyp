@@ -58,11 +58,11 @@
             <DeviceType id="neuron"> 
                 <Properties> 
                     <Scalar name="seed" type="uint32_t"/>
-                    <Scalar name="fanin" type="uint32_t"/> 
-        			<Scalar name="u" type="float" default="-64.80045513159989"/>
-        			<Scalar name="v" type="float" default="6.796177778686966"/>
+        			<Scalar name="u" type="float" default="-64.81838252926757"/>
+        			<Scalar name="v" type="float" default="4.757176809798099"/>
         			<Scalar name="a" type="float" default="0.02"/>
         			<Scalar name="b" type="float" default="0.2"/>
+        			<Scalar name="fanin" type="uint32_t" default="2"/>
         			<Scalar name="Ir" type="float" default="1"/> 
                 </Properties> 
                 <State> 
@@ -149,38 +149,23 @@
             "neuron_count":5
         </Properties> 
         <DeviceInstances>        
-            <DevI id="n_0" type="neuron"><P>"u":-64.80045513159989,"v":6.796177778686966,"a":0.02,"b":0.2,"Ir":1</P></DevI>
-            <DevI id="n_1" type="neuron"><P>"u":-56.6572574945745,"v":7.9000069086407505,"a":0.02,"b":0.2,"Ir":1</P></DevI>
-            <DevI id="n_2" type="neuron"><P>"u":2,"v":-65,"a":0.03971832189426007,"b":0.24473358325297198,"Ir":1</P></DevI>
-            <DevI id="n_3" type="neuron"><P>"u":2,"v":-65,"a":0.09188456406751055,"b":0.2388561902273547,"Ir":1</P></DevI>
-            <DevI id="n_4" type="neuron"><P>"u":2,"v":-65,"a":0.026526649443037034,"b":0.2297427609182504,"Ir":1</P></DevI>
+            <DevI id="n_0" type="neuron"><P>"u":-64.81838252926757,"v":4.757176809798099,"a":0.02,"b":0.2,"fanin":2,"Ir":1</P></DevI>
+            <DevI id="n_1" type="neuron"><P>"u":-60.69571522015538,"v":7.063853254238794,"a":0.02,"b":0.2,"fanin":2,"Ir":1</P></DevI>
+            <DevI id="n_2" type="neuron"><P>"u":2,"v":-65,"a":0.0404527179934077,"b":0.21712622011488197,"fanin":2,"Ir":1</P></DevI>
+            <DevI id="n_3" type="neuron"><P>"u":2,"v":-65,"a":0.03275057797628805,"b":0.21165171498667135,"fanin":2,"Ir":1</P></DevI>
+            <DevI id="n_4" type="neuron"><P>"u":2,"v":-65,"a":0.08312779326773599,"b":0.22020772199374455,"fanin":2,"Ir":1</P></DevI>
         </DeviceInstances> 
         <EdgeInstances> 
-            <EdgeI path="n_0:input-n_0:fire"><P>"weight":-0.10737285417702447</P></EdgeI>
-            <EdgeI path="n_1:input-n_0:fire"><P>"weight":0.16545731664551072</P></EdgeI>
-            <EdgeI path="n_2:input-n_0:fire"><P>"weight":0.4577147729270449</P></EdgeI>
-            <EdgeI path="n_3:input-n_0:fire"><P>"weight":-0.9173394473325315</P></EdgeI>
-            <EdgeI path="n_4:input-n_0:fire"><P>"weight":-0.5245596250442485</P></EdgeI>
-            <EdgeI path="n_0:input-n_1:fire"><P>"weight":-0.3097678658318549</P></EdgeI>
-            <EdgeI path="n_1:input-n_1:fire"><P>"weight":-0.18391977317006114</P></EdgeI>
-            <EdgeI path="n_2:input-n_1:fire"><P>"weight":-0.20501217846859188</P></EdgeI>
-            <EdgeI path="n_3:input-n_1:fire"><P>"weight":-0.017294144598895</P></EdgeI>
-            <EdgeI path="n_4:input-n_1:fire"><P>"weight":-0.7612188632628429</P></EdgeI>
-            <EdgeI path="n_0:input-n_2:fire"><P>"weight":-0.08179693092436846</P></EdgeI>
-            <EdgeI path="n_1:input-n_2:fire"><P>"weight":-0.9479998758042624</P></EdgeI>
-            <EdgeI path="n_2:input-n_2:fire"><P>"weight":-0.9826614760881909</P></EdgeI>
-            <EdgeI path="n_3:input-n_2:fire"><P>"weight":0.28992654874524637</P></EdgeI>
-            <EdgeI path="n_4:input-n_2:fire"><P>"weight":-0.3676771500287207</P></EdgeI>
-            <EdgeI path="n_0:input-n_3:fire"><P>"weight":-0.3359778448152353</P></EdgeI>
-            <EdgeI path="n_1:input-n_3:fire"><P>"weight":-0.5869275103573255</P></EdgeI>
-            <EdgeI path="n_2:input-n_3:fire"><P>"weight":0.3323769918220243</P></EdgeI>
-            <EdgeI path="n_3:input-n_3:fire"><P>"weight":-0.8453612111431508</P></EdgeI>
-            <EdgeI path="n_4:input-n_3:fire"><P>"weight":-0.0336796406812816</P></EdgeI>
-            <EdgeI path="n_0:input-n_4:fire"><P>"weight":0.13282457060124314</P></EdgeI>
-            <EdgeI path="n_1:input-n_4:fire"><P>"weight":-0.5984519365236415</P></EdgeI>
-            <EdgeI path="n_2:input-n_4:fire"><P>"weight":-0.7723991849646272</P></EdgeI>
-            <EdgeI path="n_3:input-n_4:fire"><P>"weight":-0.6755022912304709</P></EdgeI>
-            <EdgeI path="n_4:input-n_4:fire"><P>"weight":-0.7648896000548981</P></EdgeI>
+            <EdgeI path="n_0:input-n_0:fire"><P>"weight":0.2917562078189484</P></EdgeI>
+            <EdgeI path="n_2:input-n_0:fire"><P>"weight":-0.7073956345091817</P></EdgeI>
+            <EdgeI path="n_3:input-n_1:fire"><P>"weight":0.39504402580368375</P></EdgeI>
+            <EdgeI path="n_4:input-n_1:fire"><P>"weight":0.40290735062065064</P></EdgeI>
+            <EdgeI path="n_1:input-n_2:fire"><P>"weight":0.1820086639465458</P></EdgeI>
+            <EdgeI path="n_3:input-n_2:fire"><P>"weight":0.15136989978798976</P></EdgeI>
+            <EdgeI path="n_0:input-n_3:fire"><P>"weight":-0.13079607246733693</P></EdgeI>
+            <EdgeI path="n_4:input-n_3:fire"><P>"weight":-0.47999907350439885</P></EdgeI>
+            <EdgeI path="n_2:input-n_4:fire"><P>"weight":0.3331043251671205</P></EdgeI>
+            <EdgeI path="n_3:input-n_4:fire"><P>"weight":0.24511081251497402</P></EdgeI>
         </EdgeInstances> 
     </GraphInstance> 
 </Graphs> 

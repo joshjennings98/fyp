@@ -28,36 +28,41 @@ neurons = [ # Props are "name : type : value"
             f"v : float : {8-6*urand()*urand()} : s", 
             "a : float : 0.02 : s", 
             "b : float : 0.2 : s",             
+            "fanin : uint32_t : 2 : p",             
             "Ir : float : 1 : p",
-        ], [1, 1, 1, 1, 1], equations, th),
+        ], [1, 0, 1, 0, 0], equations, th),
     Neuron("n_1", [
             f"u : float : {-65+15*urand()*urand()} : s", 
             f"v : float : {8-6*urand()*urand()} : s",       
             "a : float : 0.02 : s", 
             "b : float : 0.2 : s",             
+            "fanin : uint32_t : 2 : p",             
             "Ir : float : 1 : p",
-        ], [1, 1, 1, 1, 1], equations, th),
+        ], [0, 0, 0, 1, 1], equations, th),
     Neuron("n_2", [
             "u : float : 2 : s", 
             "v : float : -65 : s",        
             f"a : float : {0.02+0.08*urand()} : s", 
             f"b : float : {0.25-0.05*urand()} : s",             
+            "fanin : uint32_t : 2 : p",             
             "Ir : float : 1 : p",
-        ], [1, 1, 1, 1, 1], equations, th),
+        ], [0, 1, 0, 1, 0], equations, th),
     Neuron("n_3", [
             "u : float : 2 : s", 
             "v : float : -65 : s",        
             f"a : float : {0.02+0.08*urand()} : s", 
             f"b : float : {0.25-0.05*urand()} : s",             
+            "fanin : uint32_t : 2 : p",             
             "Ir : float : 1 : p",
-        ], [1, 1, 1, 1, 1], equations, th),
+        ], [1, 0, 0, 0, 1], equations, th),
     Neuron("n_4", [
             "u : float : 2 : s", 
             "v : float : -65 : s",        
             f"a : float : {0.02+0.08*urand()} : s", 
             f"b : float : {0.25-0.05*urand()} : s",             
+            "fanin : uint32_t : 2 : p",             
             "Ir : float : 1 : p",
-        ], [1, 1, 1, 1, 1], equations, th),
+        ], [0, 0, 1, 1, 0], equations, th),
 ]
 
 def makeGraph(neurons, name, maxt, globalClock = False):
@@ -282,7 +287,6 @@ def makeGraph(neurons, name, maxt, globalClock = False):
         return"""<DeviceType id="neuron"> 
                 <Properties> 
                     <Scalar name="seed" type="uint32_t"/>
-                    <Scalar name="fanin" type="uint32_t"/> 
         %s 
                 </Properties> 
                 <State> 
@@ -374,7 +378,7 @@ def makeGraph(neurons, name, maxt, globalClock = False):
         connections = []
         for connection in range(len(neuron.connections)): 
             if neuron.connections[connection] == 1: 
-                weight = -urand() if urand() > 0.2 else 0.5 * urand() # change to random value
+                weight = -urand() if urand() > 0.8 else 0.5 * urand() # change to random value
                 edge = "            <EdgeI path=\"%s:input-%s:fire\"><P>\"weight\":%s</P></EdgeI>\n" % (neurons[connection].name, neuron.name, weight)
                 connections.append(edge)
         edgeInstances.append("".join(connections))

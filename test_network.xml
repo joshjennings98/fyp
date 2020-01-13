@@ -20,6 +20,26 @@
                     handler_log(0, "_HANDLER_EXIT_FAIL_9be65737_"); \
                 } \
                 _do_handler_exit(code); \
+            }
+            uint32_t urng(uint32_t &state)
+            {
+                state = state*1664525+1013904223;
+                return state;
+            }
+
+            // Worlds crappiest gaussian
+            float grng(uint32_t &state)
+            {
+                uint32_t u=urng(state);
+                int32_t acc=0;
+                for(unsigned i=0;i<8;i++){
+                acc += u&0xf;
+                u=u>>4;
+                }
+                // a four-bit uniform has mean 7.5 and variance ((15-0+1)^2-1)/12 = 85/4
+                // sum of four uniforms has mean 8*7.5=60 and variance of 8*85/4=170
+                const float scale=0.07669649888473704; // == 1/sqrt(170)
+                return (acc-60.0f) * scale;
             } 
             ]]></SharedCode> 
         <MessageTypes> 
@@ -37,59 +57,88 @@
         <DeviceTypes>
             <DeviceType id="neuron"> 
                 <Properties> 
-                    <Scalar name="seed" type="uint32_t"/> 
-                    <Scalar name="fire_on_init" type="int8_t" default="0"/> 
-                    <Scalar name="test_variable" type="float" default="0.24565"/> 
+                    <Scalar name="seed" type="uint32_t"/>
+                    <Scalar name="fanin" type="uint32_t"/> 
+        			<Scalar name="u" type="float" default="-64.80045513159989"/>
+        			<Scalar name="v" type="float" default="6.796177778686966"/>
+        			<Scalar name="a" type="float" default="0.02"/>
+        			<Scalar name="b" type="float" default="0.2"/>
+        			<Scalar name="Ir" type="float" default="1"/> 
                 </Properties> 
                 <State> 
-                    <Scalar name="fireValue" type="int8_t"/> 
+                    <Scalar name="rng" type="uint32_t"/> 
+                    <Scalar name="Icount" type="uint32_t"/>
+                    <Scalar name="pendingFires" type="uint32_t"/>
                     <Scalar name="rts" type="uint32_t"/> 
-                    <Scalar name="t" type="uint32_t"/> 
-                    <Scalar name="test_variable" type="float"/>
+                    <Scalar name="t" type="uint32_t"/>
+                    <Scalar name="I" type="float"/> 
+        			<Scalar name="u" type="float"/>
+        			<Scalar name="v" type="float"/>
+        			<Scalar name="a" type="float"/>
+        			<Scalar name="b" type="float"/>
                 </State> 
                 <OnInit><![CDATA[    
                     // Initialise state values
-                    deviceState->test_variable = deviceProperties->test_variable; // Set initial test_variable value
+        			deviceState->u = deviceProperties->u; // Set initial u value
+        			deviceState->v = deviceProperties->v; // Set initial v value
+        			deviceState->a = deviceProperties->a; // Set initial a value
+        			deviceState->b = deviceProperties->b; // Set initial b value
                     
-                    // whether to fire first cycle == 1
-                    if (deviceProperties->fire_on_init == 1) { 
-                        handler_log(1, "Fired Spike"); 
-                        deviceState->fireValue = true; 
-                    } else { 
-                        deviceState->fireValue = false; 
-                    }		   
+                    deviceState->rng = deviceProperties->seed;
+                    deviceState->I=deviceProperties->Ir * grng(deviceState->rng);
+                    deviceState->Icount=0;
+                    deviceState->pendingFires=1;
+                    deviceState->rts = RTS_FLAG_fire;		   
                     ]]></OnInit> 
                 <InputPin name="input" messageTypeId="synapse"> 
                     <Properties> 
                     <Scalar name="weight" type="float"/> 
                     </Properties> 
                     <OnReceive><![CDATA[ 
-                        if(message->fired){ 
-                            handler_log(1, "Recieved Spike"); 
-                            deviceState->fireValue = true; 
-                        } 
-                        deviceState->rts = RTS_FLAG_fire; 
+                        deviceState->Icount++;
+                        if(message->fired){
+                            deviceState->I += edgeProperties->weight; // fire at 1, (1 * weight) = weight so just add weight
+                        }
+
+                        if(deviceState->Icount == deviceProperties->fanin){
+                            deviceState->pendingFires++;
+                            deviceState->Icount=0;
+                        }
                     ]]></OnReceive> 
                 </InputPin> 
                 <OutputPin name="fire" messageTypeId="synapse"> 
                     <OnSend><![CDATA[ 
                         // Assignments
-                        float &test_variable = deviceState->test_variable; // Assign test_variable
+        				float &u = deviceState->u; // Assign u
+        				float &v = deviceState->v; // Assign v
+        				float &a = deviceState->a; // Assign a
+        				float &b = deviceState->b; // Assign b
+                        float &I = deviceState->I; // Assign I
 
-                        message->fired=deviceState->fireValue; // Add conditional in future for v_threshold 
-                        handler_log(1, "Fired Spike"); 
-                        deviceState->fireValue = false; 
-                        deviceState->t++; 
-                        // /*
-                        if(deviceState->t > graphProperties->max_t){ 
-                            *doSend=0; 
-                            fake_handler_exit(0); 
+        				v = 0.04 * v * v + 5 * v + 140 - u + I;
+        				u = a * (b * v - u);
+
+                        message->fired = v >= 30;
+                        
+                        if(message->fired){
+        			deviceState->u = deviceProperties->u; // Set initial u value
+        			deviceState->v = deviceProperties->v; // Set initial v value
+        			deviceState->a = deviceProperties->a; // Set initial a value
+        			deviceState->b = deviceProperties->b; // Set initial b value
                         }
-                        // */ 
+
+                        deviceState->I=deviceProperties->Ir * grng(deviceState->rng);
+                        deviceState->Icount=0;
+                        deviceState->pendingFires--;
+                        deviceState->t++;
+                        if(deviceState->t > graphProperties->max_t){
+                            *doSend=0;
+                            fake_handler_exit(0);
+                        }
                     ]]></OnSend> 
                 </OutputPin> 
                 <ReadyToSend><![CDATA[ 
-                        *readyToSend = (deviceState->fireValue == true) ? RTS_FLAG_fire : 0; 
+                        *readyToSend = (deviceState->pendingFires > 0) ? RTS_FLAG_fire : 0;
                     ]]></ReadyToSend> 
             </DeviceType>
         </DeviceTypes> 
@@ -100,18 +149,38 @@
             "neuron_count":5
         </Properties> 
         <DeviceInstances>        
-            <DevI id="n_0" type="neuron"><P>"fire_on_init":1,"test_variable":0.24565</P></DevI>
-            <DevI id="n_1" type="neuron"><P>"fire_on_init":0,"test_variable":0.0</P></DevI>
-            <DevI id="n_2" type="neuron"><P>"fire_on_init":0,"test_variable":100.0</P></DevI>
-            <DevI id="n_3" type="neuron"><P>"fire_on_init":0,"test_variable":0.0</P></DevI>
-            <DevI id="n_4" type="neuron"><P>"fire_on_init":0,"test_variable":0.0</P></DevI>
+            <DevI id="n_0" type="neuron"><P>"u":-64.80045513159989,"v":6.796177778686966,"a":0.02,"b":0.2,"Ir":1</P></DevI>
+            <DevI id="n_1" type="neuron"><P>"u":-56.6572574945745,"v":7.9000069086407505,"a":0.02,"b":0.2,"Ir":1</P></DevI>
+            <DevI id="n_2" type="neuron"><P>"u":2,"v":-65,"a":0.03971832189426007,"b":0.24473358325297198,"Ir":1</P></DevI>
+            <DevI id="n_3" type="neuron"><P>"u":2,"v":-65,"a":0.09188456406751055,"b":0.2388561902273547,"Ir":1</P></DevI>
+            <DevI id="n_4" type="neuron"><P>"u":2,"v":-65,"a":0.026526649443037034,"b":0.2297427609182504,"Ir":1</P></DevI>
         </DeviceInstances> 
         <EdgeInstances> 
-            <EdgeI path="n_1:input-n_0:fire"><P>"weight":1.0</P></EdgeI>
-            <EdgeI path="n_2:input-n_1:fire"><P>"weight":1.0</P></EdgeI>
-            <EdgeI path="n_3:input-n_2:fire"><P>"weight":1.0</P></EdgeI>
-            <EdgeI path="n_4:input-n_3:fire"><P>"weight":1.0</P></EdgeI>
-            <EdgeI path="n_0:input-n_4:fire"><P>"weight":1.0</P></EdgeI>
+            <EdgeI path="n_0:input-n_0:fire"><P>"weight":-0.10737285417702447</P></EdgeI>
+            <EdgeI path="n_1:input-n_0:fire"><P>"weight":0.16545731664551072</P></EdgeI>
+            <EdgeI path="n_2:input-n_0:fire"><P>"weight":0.4577147729270449</P></EdgeI>
+            <EdgeI path="n_3:input-n_0:fire"><P>"weight":-0.9173394473325315</P></EdgeI>
+            <EdgeI path="n_4:input-n_0:fire"><P>"weight":-0.5245596250442485</P></EdgeI>
+            <EdgeI path="n_0:input-n_1:fire"><P>"weight":-0.3097678658318549</P></EdgeI>
+            <EdgeI path="n_1:input-n_1:fire"><P>"weight":-0.18391977317006114</P></EdgeI>
+            <EdgeI path="n_2:input-n_1:fire"><P>"weight":-0.20501217846859188</P></EdgeI>
+            <EdgeI path="n_3:input-n_1:fire"><P>"weight":-0.017294144598895</P></EdgeI>
+            <EdgeI path="n_4:input-n_1:fire"><P>"weight":-0.7612188632628429</P></EdgeI>
+            <EdgeI path="n_0:input-n_2:fire"><P>"weight":-0.08179693092436846</P></EdgeI>
+            <EdgeI path="n_1:input-n_2:fire"><P>"weight":-0.9479998758042624</P></EdgeI>
+            <EdgeI path="n_2:input-n_2:fire"><P>"weight":-0.9826614760881909</P></EdgeI>
+            <EdgeI path="n_3:input-n_2:fire"><P>"weight":0.28992654874524637</P></EdgeI>
+            <EdgeI path="n_4:input-n_2:fire"><P>"weight":-0.3676771500287207</P></EdgeI>
+            <EdgeI path="n_0:input-n_3:fire"><P>"weight":-0.3359778448152353</P></EdgeI>
+            <EdgeI path="n_1:input-n_3:fire"><P>"weight":-0.5869275103573255</P></EdgeI>
+            <EdgeI path="n_2:input-n_3:fire"><P>"weight":0.3323769918220243</P></EdgeI>
+            <EdgeI path="n_3:input-n_3:fire"><P>"weight":-0.8453612111431508</P></EdgeI>
+            <EdgeI path="n_4:input-n_3:fire"><P>"weight":-0.0336796406812816</P></EdgeI>
+            <EdgeI path="n_0:input-n_4:fire"><P>"weight":0.13282457060124314</P></EdgeI>
+            <EdgeI path="n_1:input-n_4:fire"><P>"weight":-0.5984519365236415</P></EdgeI>
+            <EdgeI path="n_2:input-n_4:fire"><P>"weight":-0.7723991849646272</P></EdgeI>
+            <EdgeI path="n_3:input-n_4:fire"><P>"weight":-0.6755022912304709</P></EdgeI>
+            <EdgeI path="n_4:input-n_4:fire"><P>"weight":-0.7648896000548981</P></EdgeI>
         </EdgeInstances> 
     </GraphInstance> 
 </Graphs> 

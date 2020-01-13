@@ -66,215 +66,59 @@ neurons = [ # Props are "name : type : value"
 ]
 
 def makeGraph(neurons, name, maxt, globalClock = False):
-    
-    def makeClock(clock):
-        if clock:
-            return """      
-            <DeviceType id="clock">
-                <Properties>
-                    <Scalar name="neuronCount" type="uint32_t"/>
-                </Properties>
-                <State>
-                    <Scalar name="waitCount" type="uint32_t"/>
-                    <Scalar name="t" type="uint32_t"/>
-                    <Scalar name="clk" type="uint32_t"/>
-                </State>
-                <OnInit><![CDATA[
-                    deviceState->waitCount = deviceProperties->neuronCount;
-                    deviceState->clk = false;
-                    ]]>
-                </OnInit>
-                <InputPin name="tock" messageTypeId="tick">
-                    <OnReceive><![CDATA[
-                        deviceState->waitCount--;
-
-                        deviceState->clk = true;
-
-                        handler_log(1, "tick"); 
-                        ]]>
-                    </OnReceive>
-                </InputPin>
-                <OutputPin name="tick" messageTypeId="tick">
-                    <OnSend><![CDATA[
-                        handler_log(1, "tock");
-                        deviceState->waitCount=deviceProperties->neuronCount;
-                        
-                        deviceState->t++;
-
-                        deviceState->clk = false;
-                        
-                        if(deviceState->t > graphProperties->max_t){
-                            *doSend=false;
-                            fake_handler_exit(0);
-                        }
-                    ]]>
-                    </OnSend>
-                </OutputPin>
-                <ReadyToSend><![CDATA[
-                    //*readyToSend = (deviceState->clk == true) ? RTS_FLAG_tick : 0;
-                    *readyToSend = (deviceState->waitCount == 0) ? RTS_FLAG_tick : 0;
-                    ]]>
-                </ReadyToSend>
-            </DeviceType>"""
-        else:
-            return ""
-
-    def makeTick(clock):
-        if clock:
-            #return """
-            #<MessageType id="tick">
-            #    <Message>
-            #        <Scalar name="firings" type="uint32_t"/>
-            #    </Message>
-            #</MessageType>"""
-            return "\n            <MessageType id=\"tick\"/>"
-        else:
-            return ""
-
-    def addClock(clock):
-        if clock:
-            return """
-            <DevI id="clock" type="clock"><P>"neuronCount":%s</P></DevI>""" % str(len(deviceInstances))
-        else:
-            return ""
 
     deviceInstances = []
     edgeInstances = []     
 
-    """
-    properties = '\n        '.join(list(map(lambda el : "<Scalar name=\"%s\" type=\"%s\" default=\"%s\"/>" % (el[0], el[1], el[2]), neurons[0].props)))
-    states = '\n        '.join(list(map(lambda el : "<Scalar name=\"%s\" type=\"%s\"/>" % (el[0], el[1]), neurons[0].props)))
-    inits = '\n        '.join(list(map(lambda el : "deviceState->%s = deviceProperties->%s; // Set initial %s value" % (el[0], el[0], el[0]), neurons[0].props)))
-    assignments = '\n        '.join(list(map(lambda el : "%s &%s = deviceState->%s; // Assign %s" % (el[1], el[0], el[0], el[0]), neurons[0].props)))
-    """
-
-    def makeDeviceType(clock):
-        if clock:
-            return """<DeviceType id="neuron">
-                <Properties>
-                    <Scalar name="seed" type="uint32_t"/>
-                    %s
-                </Properties>
-                <State>
-                    <Scalar name="fireValue" type="int8_t"/> 
-                    <Scalar name="rts" type="uint32_t"/> 
-                    <Scalar name="t" type="uint32_t"/> 
-                    <Scalar name="waitTick" type="int8_t"/>
-                    <Scalar name="sentSpike" type="int8_t"/>
-                    %s
-                </State>
-                <OnInit><![CDATA[
-                    // Initialise state values
-                    %s
-                    
-                    deviceState->waitTick=false;
-                    deviceState->sentSpike=true;
-                    ]]>
-                </OnInit>
-                <InputPin name="tick" messageTypeId="tick">
-                    <OnReceive><![CDATA[
-                        deviceState->waitTick=false;
-                        ]]>
-                    </OnReceive>
-                </InputPin>
-                <InputPin name="input" messageTypeId="synapse">
-                    <Properties>
-                        <Scalar name="weight" type="float"/>
-                    </Properties>
-                    <OnReceive><![CDATA[
-                        if(message->fired){ 
-                            handler_log(1, "Recieved Spike"); 
-                            deviceState->fireValue = true; 
-                        } 
-                        deviceState->rts = RTS_FLAG_fire; 
-                        
-                        ]]>
-                    </OnReceive>
-                </InputPin>
-                <OutputPin name="tock" messageTypeId="tick">
-                    <OnSend><![CDATA[
-                        
-                        deviceState->sentSpike=false;
-                        deviceState->waitTick=true;
-
-                    ]]>
-                    </OnSend>
-                </OutputPin>
-                <OutputPin name="fire" messageTypeId="synapse">
-                    <OnSend><![CDATA[
-                        // Assignments
-                        %s
-
-                        if (deviceState->waitTick == false) {
-                            message->fired=deviceState->fireValue;
-                            deviceState->sentSpike=true;
-
-                            message->fired=deviceState->fireValue; // Add conditional in future for v_threshold 
-                            handler_log(1, "Fired Spike"); 
-                            deviceState->fireValue = false; 
-                        }
-                        ]]>
-                    </OnSend>
-                </OutputPin>
-                    <ReadyToSend><![CDATA[
-                        *readyToSend=0;
-                        if(!deviceState->fireValue && !deviceState->waitTick && deviceState->sentSpike ){
-                            *readyToSend |= RTS_FLAG_tock;
-                        }else if(deviceState->fireValue && !deviceState->waitTick && !deviceState->sentSpike){
-                            *readyToSend |= RTS_FLAG_fire;
-                        }
-                    ]]>
-                </ReadyToSend>
-            </DeviceType>""" % (properties, states, inits, assignments)
-        else:
-            return """<DeviceType id="neuron"> 
+    def makeDeviceType():
+        return """<DeviceType id="neuron"> 
+            <Properties> 
+                <Scalar name="seed" type="uint32_t"/> 
+                %s 
+            </Properties> 
+            <State> 
+                <Scalar name="fireValue" type="int8_t"/> 
+                <Scalar name="rts" type="uint32_t"/> 
+                <Scalar name="t" type="uint32_t"/> 
+                %s
+            </State> 
+            <OnInit><![CDATA[    
+                // Initialise state values
+                %s	   
+                ]]></OnInit> 
+            <InputPin name="input" messageTypeId="synapse"> 
                 <Properties> 
-                    <Scalar name="seed" type="uint32_t"/> 
-                    %s 
+                <Scalar name="weight" type="float"/> 
                 </Properties> 
-                <State> 
-                    <Scalar name="fireValue" type="int8_t"/> 
-                    <Scalar name="rts" type="uint32_t"/> 
-                    <Scalar name="t" type="uint32_t"/> 
+                <OnReceive><![CDATA[ 
+                    if(message->fired){ 
+                        handler_log(1, "Recieved Spike"); 
+                        deviceState->fireValue = true; 
+                    } 
+                    deviceState->rts = RTS_FLAG_fire; 
+                ]]></OnReceive> 
+            </InputPin> 
+            <OutputPin name="fire" messageTypeId="synapse"> 
+                <OnSend><![CDATA[ 
+                    // Assignments
                     %s
-                </State> 
-                <OnInit><![CDATA[    
-                    // Initialise state values
-                    %s	   
-                    ]]></OnInit> 
-                <InputPin name="input" messageTypeId="synapse"> 
-                    <Properties> 
-                    <Scalar name="weight" type="float"/> 
-                    </Properties> 
-                    <OnReceive><![CDATA[ 
-                        if(message->fired){ 
-                            handler_log(1, "Recieved Spike"); 
-                            deviceState->fireValue = true; 
-                        } 
-                        deviceState->rts = RTS_FLAG_fire; 
-                    ]]></OnReceive> 
-                </InputPin> 
-                <OutputPin name="fire" messageTypeId="synapse"> 
-                    <OnSend><![CDATA[ 
-                        // Assignments
-                        %s
 
-                        message->fired=deviceState->fireValue; // Add conditional in future for v_threshold 
-                        handler_log(1, "Fired Spike"); 
-                        deviceState->fireValue = false; 
-                        deviceState->t++; 
-                        // /*
-                        if(deviceState->t > graphProperties->max_t / graphProperties->neuron_count){ 
-                            *doSend=0; 
-                            fake_handler_exit(0); 
-                        }
-                        // */ 
-                    ]]></OnSend> 
-                </OutputPin> 
-                <ReadyToSend><![CDATA[ 
-                        *readyToSend = (deviceState->fireValue == true) ? RTS_FLAG_fire : 0; 
-                    ]]></ReadyToSend> 
-            </DeviceType>""" % (properties, states, inits, assignments)
+                    message->fired=deviceState->fireValue; // Add conditional in future for v_threshold 
+                    handler_log(1, "Fired Spike"); 
+                    deviceState->fireValue = false; 
+                    deviceState->t++; 
+                    // /*
+                    if(deviceState->t > graphProperties->max_t / graphProperties->neuron_count){ 
+                        *doSend=0; 
+                        fake_handler_exit(0); 
+                    }
+                    // */ 
+                ]]></OnSend> 
+            </OutputPin> 
+            <ReadyToSend><![CDATA[ 
+                    *readyToSend = (deviceState->fireValue == true) ? RTS_FLAG_fire : 0; 
+                ]]></ReadyToSend> 
+        </DeviceType>""" % (properties, states, inits, assignments)
     
     def makeNeuronType(neuron : Neuron) -> str:
         properties = '\n        '.join(list(map(lambda el : "\t\t\t<Scalar name=\"%s\" type=\"%s\" default=\"%s\"/>" % (el[0], el[1], el[2]), neuron.props)))
@@ -353,24 +197,8 @@ def makeGraph(neurons, name, maxt, globalClock = False):
                     ]]></ReadyToSend> 
             </DeviceType>""" % (properties, states, inits, assignments, equations ,threshold, inits)
 
-
-
     devices = makeNeuronType(neurons[0])
-    
-    """
-    for neuron in inputNeurons:
-        device = "            <DevI id=\"%s\" type=\"input_neuron\"></DevI>\n" % (neuron.name)
-        deviceInstances.append(device)
-        connections = []
-        for connection in range(len(neuron.connections)): 
-            if neuron.connections[connection] == 1: 
-                weight = 1.0 # change to random value
-                edge = "            <EdgeI path=\"%s:input-%s:fire\"><P>\"weight\":%s</P></EdgeI>\n" % (neurons[connection].name, neuron.name, weight)
-                connections.append(edge)
-                edge = "            <EdgeI path=\"%s:input1-%s:fire1\"><P>\"weight\":%s</P></EdgeI>\n" % (neuron.name, neuron.name, weight)
-                connections.append(edge)
-        edgeInstances.append("".join(connections))
-    """
+
     for neuron in neurons:
         neuronProps = ','.join(list(map(lambda el : "\"%s\":%s" % (el[0], el[2]), neuron.props)))
         device = "            <DevI id=\"%s\" type=\"neuron\"><P>%s</P></DevI>\n" % (neuron.name, neuronProps)
@@ -382,21 +210,6 @@ def makeGraph(neurons, name, maxt, globalClock = False):
                 edge = "            <EdgeI path=\"%s:input-%s:fire\"><P>\"weight\":%s</P></EdgeI>\n" % (neurons[connection].name, neuron.name, weight)
                 connections.append(edge)
         edgeInstances.append("".join(connections))
-        
-
-
-        """
-        if globalClock:
-            edgeInstances.append("            <EdgeI path=\"%s:tick-clock:tick\" />\n" % (neuron.name))
-            edgeInstances.append("            <EdgeI path=\"clock:tock-%s:tock\" />\n" % (neuron.name))
-        """
-    
-    """
-    clock = makeClock(globalClock)
-    tick = makeTick(globalClock)
-    clockNeuron = addClock(globalClock)
-    """
-
 
     graph = """<?xml version='1.0'?>
 <Graphs xmlns="https://poets-project.org/schemas/virtual-graph-schema-v3">
@@ -470,7 +283,6 @@ def makeGraph(neurons, name, maxt, globalClock = False):
     </GraphInstance> 
 </Graphs> 
     """ % (name, "", "", devices, name, name, maxt, len(deviceInstances), "", "".join(deviceInstances), "".join(edgeInstances))
-    # tick, clock, clockNeuron
     return graph
 
 def saveGraph(graph, filename):
@@ -482,7 +294,6 @@ def saveGraph(graph, filename):
     print(graph)
     print("Graph saved as:", filename)
 
-
-graph = makeGraph(neurons, name, maxt, False)
+graph = makeGraph(neurons, name, maxt)
 
 saveGraph(graph, "test_network.xml")

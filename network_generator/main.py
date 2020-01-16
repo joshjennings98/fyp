@@ -1,6 +1,9 @@
-from network_generator import *
+# main.py
+from networkGenerator import *
+from neuronListGenerator import genNeuronList
 from random import randint
-    
+
+# Differential equations
 equations = [
     "v = 0.5 * (0.04 * v * v + 5 * v + 140 - u + I)",
     "u = a * (b * v - u)"
@@ -29,7 +32,6 @@ for i in range(N):
         "b : float : 0.2 : s",
         f"v : float : {-65+15*r*r} : s",
         f"u : float : {8-6*r*r} : s",
-        #"Ir : float : 1 : p",
         f"fanin : uint32_t : {K} : p"
     ] 
     params1 = [
@@ -37,7 +39,6 @@ for i in range(N):
         f"b : float : {0.25-0.05*r} : s",
         "v : float : -65 : s",
         "u : float : 2 : s",
-        #"Ir : float : 1 : p",
         f"fanin : uint32_t : {K} : p"
     ]
     connections = [0 for k in range(N)]
@@ -52,5 +53,24 @@ for i in range(N):
     neuron = Neuron(name, params, connections)
     neurons.append(neuron)
 
-network = Network("test_gals", equations, "v >= 30", neurons, onReset, 100)
+params = [
+    ([
+        "a : float : 0.02 : s",
+        "b : float : 0.2 : s",
+        "v : float : -56.968 : s",
+        "u : float : 4.7875 : s",
+        "fanin : uint32_t : 20 : p"
+    ], 0.8),
+    ([
+        "a : float : 0.0785 : s",
+        "b : float : 0.2134 : s",
+        "v : float : -65 : s",
+        "u : float : 2 : s",
+        "fanin : uint32_t : 20 : p"
+    ], 0.2)
+]
+
+neurons1 = genNeuronList(100, params, 0.2)
+
+network = Network("test_gals", equations, "v >= 30", neurons1, onReset, 100)
 network.saveGraph()

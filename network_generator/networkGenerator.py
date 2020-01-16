@@ -1,11 +1,21 @@
 # network_generator.py
 import random
-from horrible_string_stuff import *
+from xmlGenerator import *
 from typing import List
 
 rand=random.random
 
 class Neuron(object):
+    """
+    A simple neuron class.
+    It contains the following parameters:
+    * name - the name of the neuron
+    * props - a list of parameters used in the equations (includes constant properties and variable states)
+    * states - a list of parameters that are variable, subset of props
+    * connections - an array of 1 or 0 stating the connection of a neuron to other neurons
+
+    Initialise with Neuron(name, props, connections)
+    """
     def __init__(self, name : str, params : List[str], connections : List[int]):
         self.name = name
         self.props = list(map(lambda el: el.replace(" ", "").split(":"), params)) # Strip white space and turn to a better list
@@ -13,6 +23,22 @@ class Neuron(object):
         self.connections = connections
 
 class Network(object):
+    """
+    A simple neural network class.
+    It contains the following parameters:
+    * name - the name of the network
+    * threshold - the threshold equation for setting when a neuron fires
+    * equations - the list of equations used by the network
+    * neurons -  a list of neurons (using Neuron class)
+    * onReset - a set of assignments that happen when the threshold is met (format: state variable : operator : network property)
+    * maxt - the maximum number of time steps
+    
+    Initialise with Neuron(name, equations, threshold, neurons, onReset, maxt)
+    
+    Contains the following functions:
+    * makeGraph - function called on initialisation to generate a graph
+    * saveGraph - saves the graph to 'name.xml'. Called by the user
+    """
     def __init__(self, name : str, equations : List[str], threshold : str, neurons : List[Neuron], onReset : List[str], maxt : int):
         self.name = name
         self.equations = equations
@@ -23,6 +49,9 @@ class Network(object):
         self.graph = self.makeGraph(self.neurons, self.name, self.maxt, self.equations, self.threshold, self.onReset)
    
     def makeGraph(self, neurons : List[str], name : str, maxt : int, equations : List[str], threshold : str, onReset : List[str]) -> str:              
+        """
+        Make a newwork graph based on the contructors parameters
+        """
         deviceInstances = []
         edgeInstances = []
         
@@ -51,6 +80,9 @@ class Network(object):
         return graph
 
     def saveGraph(self):
+        """
+        Save the current Network type to a file
+        """
         filename = "%s.xml" % self.name
         file = open(filename, "w") 
         file.writelines(self.graph) 

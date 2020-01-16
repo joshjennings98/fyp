@@ -2,6 +2,9 @@
 from typing import List
 
 def devicesGen(properties : str, states : str, inits : str, assignments : str, equations : str, threshold : str, onReset : str) -> str:
+    """
+    Generate the XML for the devices
+    """
     return f"""<DeviceType id="neuron"> 
 \t\t\t\t<Properties> 
 \t\t\t\t\t<Scalar name="seed" type="uint32_t"/>
@@ -60,7 +63,7 @@ def devicesGen(properties : str, states : str, inits : str, assignments : str, e
 \t\t\t\t\t\tdeviceState->I=deviceProperties->Ir * grng(deviceState->rng);
 \t\t\t\t\t\tdeviceState->Icount=0;
 \t\t\t\t\t\tdeviceState->pendingFires--;
-\t\t\t\t\t\tdeviceState->t++;
+\t\t\t\t\t\tdeviceState->t++;\n
 \t\t\t\t\t\tif(deviceState->t > graphProperties->max_t && graphProperties->max_t != 0){{
 \t\t\t\t\t\t\t*doSend=0;
 \t\t\t\t\t\t\tfake_handler_exit(0);
@@ -76,12 +79,14 @@ def devicesGen(properties : str, states : str, inits : str, assignments : str, e
 \t\t\t</DeviceType>"""
 
 def graphGen(name : str, devices : str, maxt: int, deviceInstances : List[str], edgeInstances : List[str]) -> str:
+    """
+    Generate the XML for the entire graph, takes the devices and edges and attaches everyting together
+    """
     return f"""<?xml version='1.0'?>
 <Graphs xmlns="https://poets-project.org/schemas/virtual-graph-schema-v3">
 \t<GraphType xmlns="https://poets-project.org/schemas/virtual-graph-schema-v3" id="{name}"> 
 \t\t<Properties> 
 \t\t\t<Scalar name="max_t" type="uint32_t"/> 
-\t\t\t<Scalar name="neuron_count" type="uint32_t"/> 
 \t\t</Properties> 
 \t\t<SharedCode>
 \t\t\t<![CDATA[ 

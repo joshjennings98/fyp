@@ -13,15 +13,16 @@ class Neuron(object):
         self.connections = connections
 
 class Network(object):
-    def __init__(self, name : str, equations : List[str], threshold : str, neurons : List[Neuron], maxt):
+    def __init__(self, name : str, equations : List[str], threshold : str, neurons : List[Neuron], onReset : List[str], maxt : int):
         self.name = name
         self.equations = equations
         self.threshold = threshold
         self.neurons = neurons
         self.maxt = maxt
-        self.graph = self.makeGraph(self.neurons, self.name, self.maxt, self.equations, self.threshold)
+        self.onReset = onReset
+        self.graph = self.makeGraph(self.neurons, self.name, self.maxt, self.equations, self.threshold, self.onReset)
    
-    def makeGraph(self, neurons : List[str], name : str, maxt : int, equations : List[str], threshold : str) -> str:              
+    def makeGraph(self, neurons : List[str], name : str, maxt : int, equations : List[str], threshold : str, onReset : List[str]) -> str:              
         deviceInstances = []
         edgeInstances = []
         
@@ -30,6 +31,7 @@ class Network(object):
         inits = '\n\t\t'.join(list(map(lambda el : "\t\t\tdeviceState->%s = deviceProperties->%s; // Set initial %s value" % (el[0], el[0], el[0]), neurons[0].states)))
         assignments = '\n\t\t'.join(list(map(lambda el : "\t\t\t\t%s &%s = deviceState->%s; // Assign %s" % (el[1], el[0], el[0], el[0]), neurons[0].states)))
         equations = '\n\t\t'.join(list(map(lambda el : "\t\t\t\t%s;" % el, equations))) 
+        onReset = '\n\t\t'.join(list(map(lambda el1: "\t\t\t\t\t%s %s deviceProperties->%s;" % (el1[0], el1[1], el1[2]), list(map(lambda el2: el2.replace(" ", "").split(":"), onReset)))))
 
         for neuron in neurons:
             neuronProps = ','.join(list(map(lambda el : "\"%s\":%s" % (el[0], el[2]), neuron.props)))
@@ -43,7 +45,7 @@ class Network(object):
                     connections.append(edge)
             edgeInstances.append("".join(connections))
         
-        devices =  devicesGen(properties, states, inits, assignments, equations, threshold)
+        devices =  devicesGen(properties, states, inits, assignments, equations, threshold, onReset)
         graph = graphGen(name, devices, maxt, deviceInstances, edgeInstances)
 
         return graph

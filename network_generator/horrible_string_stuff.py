@@ -1,7 +1,7 @@
 # horible_string_stuff.py
 from typing import List
 
-def devicesGen(properties : str, states : str, inits : str, assignments : str, equations : str, threshold : str) -> str:
+def devicesGen(properties : str, states : str, inits : str, assignments : str, equations : str, threshold : str, onReset : str) -> str:
     return f"""<DeviceType id="neuron"> 
 \t\t\t\t<Properties> 
 \t\t\t\t\t<Scalar name="seed" type="uint32_t"/>
@@ -55,7 +55,7 @@ def devicesGen(properties : str, states : str, inits : str, assignments : str, e
 \t\t\t\t\t\tmessage->fired = {threshold};
 \t\t\t\t\t\t
 \t\t\t\t\t\tif(message->fired){{
-\t\t\t{inits}
+\t\t{onReset}
 \t\t\t\t\t\t}}\n
 \t\t\t\t\t\tdeviceState->I=deviceProperties->Ir * grng(deviceState->rng);
 \t\t\t\t\t\tdeviceState->Icount=0;

@@ -15,6 +15,10 @@ onReset = [
     "u : += : u"
 ]
 
+############
+# Option 1 #
+############
+
 neurons = []
 
 Ne=80
@@ -53,6 +57,10 @@ for i in range(N):
     neuron = Neuron(name, params, connections)
     neurons.append(neuron)
 
+############
+# Option 2 #
+############
+
 params = [
     ([
         "a : float : 0.02 : s",
@@ -70,7 +78,7 @@ params = [
     ], 0.2)
 ]
 
-neurons1 = genNeuronList(100, params, 0.2)
+neurons1 = genNeuronList(100, params, 0.2) # No random things like the other version :(
 
-network = Network("test_gals", equations, "v >= 30", neurons1, onReset, 100)
+network = Network("test_gals", equations, "v >= 30", neurons, onReset, 10)
 network.saveGraph()

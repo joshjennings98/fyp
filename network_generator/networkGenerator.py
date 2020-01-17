@@ -2,8 +2,38 @@
 import random
 from xmlGenerator import *
 from typing import List
+from enum import Enum
 
 rand=random.random
+
+class Param(object):
+    """
+    Takes a string that is the param and splits it into the different parts to make it easier to work with.\n  
+    Means that later things won't just be referencing indexes in lists
+    """
+    def __init__(self, param : str) -> None:
+        paramParts = param.replace(" ", "").split(":") # Strip white space and turn to a better list
+        try:
+            self.name = paramParts[0]
+            self.type = paramParts[1]
+            self.value = paramParts[2]
+            self.propState = paramParts[3]
+        except:
+            raise Exception("Invalid parameter")
+
+class OnReset(object):
+    """
+    Takes a string that is the equation for onReset and splits it into the different parts to make it easier to work with.\n  
+    Means that later things won't just be referencing indexes in lists. SImilar to Param class but with less fields.
+    """
+    def __init__(self, equ : str) -> None:
+        equParts = equ.replace(" ", "").split(":") # Strip white space and turn to a better list
+        try:
+            self.name = equParts[0]
+            self.operator = equParts[1]
+            self.value = equParts[2]
+        except:
+            raise Exception("Invalid reset type")
 
 class Neuron(object):
     """
@@ -16,10 +46,10 @@ class Neuron(object):
 
     Initialise with Neuron(name, props, connections)
     """
-    def __init__(self, name : str, params : List[str], connections : List[int]):
+    def __init__(self, name : str, params : List[str], connections : List[int]) -> None:
         self.name = name
-        self.props = list(map(lambda el: el.replace(" ", "").split(":"), params)) # Strip white space and turn to a better list
-        self.states = list(filter(lambda x: x[3] == "s", list(map(lambda el: el.replace(" ", "").split(":"), params))))
+        self.props = list(map(lambda param: Param(param), params)) # Strip white space and turn to a better list
+        self.states = list(filter(lambda x: x.propState == "s", self.props))
         self.connections = connections
 
 class Network(object):
@@ -39,13 +69,13 @@ class Network(object):
     * makeGraph - function called on initialisation to generate a graph
     * saveGraph - saves the graph to 'name.xml'. Called by the user
     """
-    def __init__(self, name : str, equations : List[str], threshold : str, neurons : List[Neuron], onReset : List[str], maxt : int):
+    def __init__(self, name : str, equations : List[str], threshold : str, neurons : List[Neuron], onReset : List[str], maxt : int) -> None:
         self.name = name
         self.equations = equations
         self.threshold = threshold
         self.neurons = neurons
         self.maxt = maxt
-        self.onReset = onReset
+        self.onReset = list(map(lambda equ: OnReset(equ), onReset))
         self.graph = self.makeGraph(self.neurons, self.name, self.maxt, self.equations, self.threshold, self.onReset)
    
     def makeGraph(self, neurons : List[str], name : str, maxt : int, equations : List[str], threshold : str, onReset : List[str]) -> str:              
@@ -55,15 +85,15 @@ class Network(object):
         deviceInstances = []
         edgeInstances = []
         
-        properties = '\n\t\t'.join(list(map(lambda el : "\t\t\t<Scalar name=\"%s\" type=\"%s\" default=\"%s\"/>" % (el[0], el[1], el[2]), neurons[0].props)))
-        states = '\n\t\t'.join(list(map(lambda el : "\t\t\t<Scalar name=\"%s\" type=\"%s\"/>" % (el[0], el[1]), neurons[0].states)))
-        inits = '\n\t\t'.join(list(map(lambda el : "\t\t\tdeviceState->%s = deviceProperties->%s; // Set initial %s value" % (el[0], el[0], el[0]), neurons[0].states)))
-        assignments = '\n\t\t'.join(list(map(lambda el : "\t\t\t\t%s &%s = deviceState->%s; // Assign %s" % (el[1], el[0], el[0], el[0]), neurons[0].states)))
-        equations = '\n\t\t'.join(list(map(lambda el : "\t\t\t\t%s;" % el, equations))) 
-        onReset = '\n\t\t'.join(list(map(lambda el1: "\t\t\t\t\t%s %s deviceProperties->%s;" % (el1[0], el1[1], el1[2]), list(map(lambda el2: el2.replace(" ", "").split(":"), onReset)))))
+        properties = '\n\t\t'.join(list(map(lambda prop : "\t\t\t<Scalar name=\"%s\" type=\"%s\" default=\"%s\"/>" % (prop.name, prop.type, prop.value), neurons[0].props)))
+        states = '\n\t\t'.join(list(map(lambda state : "\t\t\t<Scalar name=\"%s\" type=\"%s\"/>" % (state.name, state.type), neurons[0].states)))
+        inits = '\n\t\t'.join(list(map(lambda var : "\t\t\tdeviceState->%s = deviceProperties->%s; // Set initial %s value" % (var.name, var.name, var.name), neurons[0].states)))
+        assignments = '\n\t\t'.join(list(map(lambda var : "\t\t\t\t%s &%s = deviceState->%s; // Assign %s" % (var.type, var.name, var.name, var.name), neurons[0].states)))
+        equations = '\n\t\t'.join(list(map(lambda equ : "\t\t\t\t%s;" % equ, equations))) 
+        onReset = '\n\t\t'.join(list(map(lambda equ: "\t\t\t\t\t%s %s deviceProperties->%s;" % (equ.name, equ.operator, equ.value), onReset)))
 
         for neuron in neurons:
-            neuronProps = ','.join(list(map(lambda el : "\"%s\":%s" % (el[0], el[2]), neuron.props)))
+            neuronProps = ','.join(list(map(lambda prop : "\"%s\":%s" % (prop.name, prop.value), neuron.props)))
             device = "\t\t\t<DevI id=\"%s\" type=\"neuron\"><P>%s</P></DevI>\n" % (neuron.name, neuronProps)
             deviceInstances.append(device)
             connections = []
@@ -79,7 +109,7 @@ class Network(object):
 
         return graph
 
-    def saveGraph(self):
+    def saveGraph(self) -> None:
         """
         Save the current Network type to a file
         """

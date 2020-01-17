@@ -7,7 +7,7 @@ def genNeuronList(num : int, params : List[Tuple[List[str], float]], connectionP
     """
     A function for generating a list of neurons.
     * num - number of neurons to create
-    * params - the list tuples of (params for the neurons, number of neurons with this set of params)
+    * params - the list tuples of (params for the neurons, fraction of neurons with this set of params) <- should add up to 1.0
     * connectionProb - a rough probability for how many neurons each neuron is connected to
     """
     neurons = []

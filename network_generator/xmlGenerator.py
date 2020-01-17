@@ -3,7 +3,9 @@ from typing import List
 
 def devicesGen(properties : str, states : str, inits : str, assignments : str, equations : str, threshold : str, onReset : str) -> str:
     """
-    Generate the XML for the devices
+    Generate the XML for the devices.
+    
+    xml.dom.minidom with prettyfying makes everything ugly so it is hard coded
     """
     return f"""<DeviceType id="neuron"> 
 \t\t\t\t<Properties> 

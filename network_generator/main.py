@@ -61,24 +61,27 @@ for i in range(N):
 # Option 2 #
 ############
 
-params = [
-    ([
-        "a : float : 0.02 : s",
-        "b : float : 0.2 : s",
-        "v : float : -56.968 : s",
-        "u : float : 4.7875 : s",
-        "fanin : uint32_t : 20 : p"
-    ], 0.8),
-    ([
-        "a : float : 0.0785 : s",
-        "b : float : 0.2134 : s",
-        "v : float : -65 : s",
-        "u : float : 2 : s",
-        "fanin : uint32_t : 20 : p"
-    ], 0.2)
+equations = [
+    "v += I"
 ]
 
-neurons1 = genNeuronList(100, params, 0.2) # No random things like the other version :(
+OnReset = [
+    "v : = : v"
+]
 
-network = Network("test_gals", equations, "v >= 30", neurons, onReset, 10)
+params = [
+    ([
+        "v : float : 0.2 : s",
+    ], 0.4),
+    ([
+        "v : float : 0.8 : s",
+    ], 0.2),
+    ([
+        "v : float : 0.6 : s",
+    ], 0.4)
+]
+
+neurons1 = genNeuronList(5, params, 0.2) # No random things like the other version :(
+
+network = Network("Test_Network", equations, "v = 0.5", neurons, onReset, 10)
 network.saveGraph()

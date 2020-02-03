@@ -85,22 +85,22 @@ class Network(object):
         deviceInstances = []
         edgeInstances = []
         
-        properties = '\n\t\t'.join(list(map(lambda prop : "\t\t\t<Scalar name=\"%s\" type=\"%s\" default=\"%s\"/>" % (prop.name, prop.type, prop.value), neurons[0].props)))
-        states = '\n\t\t'.join(list(map(lambda state : "\t\t\t<Scalar name=\"%s\" type=\"%s\"/>" % (state.name, state.type), neurons[0].states)))
-        inits = '\n\t\t'.join(list(map(lambda var : "\t\t\tdeviceState->%s = deviceProperties->%s; // Set initial %s value" % (var.name, var.name, var.name), neurons[0].states)))
-        assignments = '\n\t\t'.join(list(map(lambda var : "\t\t\t\t%s &%s = deviceState->%s; // Assign %s" % (var.type, var.name, var.name, var.name), neurons[0].states)))
-        equations = '\n\t\t'.join(list(map(lambda equ : "\t\t\t\t%s;" % equ, equations))) 
-        onReset = '\n\t\t'.join(list(map(lambda equ: "\t\t\t\t\t%s %s deviceProperties->%s;" % (equ.name, equ.operator, equ.value), onReset)))
+        properties = '\n\t\t'.join(list(map(lambda prop : f"\t\t\t<Scalar name=\"{prop.name}\" type=\"{prop.type}\" default=\"{prop.value}\"/>", neurons[0].props)))
+        states = '\n\t\t'.join(list(map(lambda state : f"\t\t\t<Scalar name=\"{state.name}\" type=\"{state.type}\"/>", neurons[0].states)))
+        inits = '\n\t\t'.join(list(map(lambda var : f"\t\t\tdeviceState->{var.name} = deviceProperties->{var.name}; // Set initial {var.name} value", neurons[0].states)))
+        assignments = '\n\t\t'.join(list(map(lambda var : f"\t\t\t\t{var.type} &{var.name} = deviceState->{var.name}; // Assign {var.name}", neurons[0].states)))
+        equations = '\n\t\t'.join(list(map(lambda equ : f"\t\t\t\t{equ};", equations))) 
+        onReset = '\n\t\t'.join(list(map(lambda equ: f"\t\t\t\t\t{equ.name} {equ.operator} deviceProperties->{equ.value};", onReset)))
 
         for neuron in neurons:
-            neuronProps = ','.join(list(map(lambda prop : "\"%s\":%s" % (prop.name, prop.value), neuron.props)))
-            device = "\t\t\t<DevI id=\"%s\" type=\"neuron\"><P>%s</P></DevI>\n" % (neuron.name, neuronProps)
+            neuronProps = ','.join(list(map(lambda prop : f"\"{prop.name}\":{prop.value}", neuron.props)))
+            device = f"\t\t\t<DevI id=\"{neuron.name}\" type=\"neuron\"><P>{neuronProps}</P></DevI>\n"
             deviceInstances.append(device)
             connections = []
             for connection in range(len(neuron.connections)): 
                 if neuron.connections[connection] == 1: 
-                    weight = -rand() if rand() > 0.8 else 0.5 * rand() # change to random value
-                    edge = "\t\t\t<EdgeI path=\"%s:input-%s:fire\"><P>\"weight\":%s</P></EdgeI>\n" % (neuron.name, neurons[connection].name, weight)
+                    weight = -rand() if rand() > 0.8 else 0.5 * rand() # change to better random values
+                    edge = f"\t\t\t<EdgeI path=\"{neuron.name}:input-{neurons[connection].name}:fire\"><P>\"weight\":{weight}</P></EdgeI>\n"
                     connections.append(edge)
             edgeInstances.append("".join(connections))
         
@@ -113,7 +113,7 @@ class Network(object):
         """
         Save the current Network type to a file
         """
-        filename = "%s.xml" % self.name
+        filename = f"{self.name}.xml"
         file = open(filename, "w") 
         file.writelines(self.graph) 
         file.close()

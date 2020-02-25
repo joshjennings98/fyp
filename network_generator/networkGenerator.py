@@ -82,6 +82,7 @@ class Network(object):
         """
         Make a newwork graph based on the contructors parameters
         """
+        # Need to change to a generator
         deviceInstances = []
         edgeInstances = []
         

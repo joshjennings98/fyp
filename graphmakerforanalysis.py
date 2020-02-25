@@ -3,7 +3,7 @@ from matplotlib.ticker import EngFormatter
 
 # n = number of neurons (independent) vary
 # r = firing rate [0:1] (independent) vary
-# d = average degree (independent) vary
+# d = average degree (independent) vary (DONE AS A PERCENTAGE OF THE TOTAL NETWORK NODES)
 # T = total time steps (independent) const
 
 # c = number of clusters (independent)
@@ -88,8 +88,101 @@ ax.plot(x, y5, label='Relaxed GALS')
 ax.plot(x, y6, label='Non Synchronised Leaky Integrate and Fire')
 ax.plot(x, y7, label='Extreme Relaxed Leaky Integrate and Fire')
 ax.set_title(f"Degree = {degree * 100}%, Time steps = {time}, Firing rate = {fireProb}\n(Note: Message count identical for relaxed and normal GALS)")
-
-
 plt.legend()
 
+# plt.show()
+
+
+fig = plt.figure()
+fig.suptitle("Message Count vs Neuron Count (GALS)", fontsize=16)
+ax = fig.add_subplot(111)
+ax.set_xlabel("Neuron Count")
+ax.xaxis.set_major_formatter(formatter0)
+ax.set_ylabel("Message Count")
+ax.yaxis.set_major_formatter(formatter0)
+ax.plot(x, y1)
+
+fig = plt.figure()
+fig.suptitle("Message Count vs Neuron Count (Clocked)", fontsize=16)
+ax = fig.add_subplot(111)
+ax.set_xlabel("Neuron Count")
+ax.xaxis.set_major_formatter(formatter0)
+ax.set_ylabel("Message Count")
+ax.yaxis.set_major_formatter(formatter0)
+ax.plot(x, y2)
+
+fig = plt.figure()
+fig.suptitle("Message Count vs Neuron Count (Clustered)", fontsize=16)
+ax = fig.add_subplot(111)
+ax.set_xlabel("Neuron Count")
+ax.xaxis.set_major_formatter(formatter0)
+ax.set_ylabel("Message Count")
+ax.yaxis.set_major_formatter(formatter0)
+ax.plot(x, y3)
+
+fig = plt.figure()
+fig.suptitle("Message Count vs Neuron Count (Barrier)", fontsize=16)
+ax = fig.add_subplot(111)
+ax.set_xlabel("Neuron Count")
+ax.xaxis.set_major_formatter(formatter0)
+ax.set_ylabel("Message Count")
+ax.yaxis.set_major_formatter(formatter0)
+ax.plot(x, y4)
+
+fig = plt.figure()
+fig.suptitle("Message Count vs Neuron Count (Relaxed GALS)", fontsize=16)
+ax = fig.add_subplot(111)
+ax.set_xlabel("Neuron Count")
+ax.xaxis.set_major_formatter(formatter0)
+ax.set_ylabel("Message Count")
+ax.yaxis.set_major_formatter(formatter0)
+ax.plot(x, y5)
+
+fig = plt.figure()
+fig.suptitle("Message Count vs Neuron Count (Non Synchronised Leaky Integrate and Fire)", fontsize=16)
+ax = fig.add_subplot(111)
+ax.set_xlabel("Neuron Count")
+ax.xaxis.set_major_formatter(formatter0)
+ax.set_ylabel("Message Count")
+ax.yaxis.set_major_formatter(formatter0)
+ax.plot(x, y6)
+
+fig = plt.figure()
+fig.suptitle("Message Count vs Neuron Count (Extreme Relaxed Leaky Integrate and Fire)", fontsize=16)
+ax = fig.add_subplot(111)
+ax.set_xlabel("Neuron Count")
+ax.xaxis.set_major_formatter(formatter0)
+ax.set_ylabel("Message Count")
+ax.yaxis.set_major_formatter(formatter0)
+ax.plot(x, y7)
+
 plt.show()
+
+
+"""
+# GALS => t = max (t_synapse + t_return)_0..n
+# Clocked => t = max (t_clock1 + max(t_tick_0..n) + max(t_synapse_0..n))
+# Clustered => t = max (t_torepeater + max (t_betweenfpga) + max (t_fromrepeater))
+# Barrier => t = max(t_synapse_0..n) + k_barrier
+# Relaxed GALS => t = max ((t_synapse + t_return)_0..(relaxation * n))
+# Non synced Leaky Integrate and Fire => t = max (t_synapse_0..n)
+# Extreme Relaxed Leaky Integrate and Fire => t = max (t_synapse_0..n)
+
+ax3 = fig.add_subplot(133)
+menMeans = [20, 35, 30, 35, 27, 40, 12]
+womenMeans = [25, 32, 34, 20, 25, 26, 27]
+
+ind = range(7)    
+width = 0.35       
+
+p1 = ax3.bar(ind, menMeans, width, label='Barrier')
+p2 = ax3.bar(ind, womenMeans, width, bottom=menMeans, label='Barxxxxrier')
+
+ax3.set_title("Overheads")
+ax3.set_ylabel("Units of time")
+plt.legend()
+
+
+plt.xticks(ind, ('GALS', 'Clocked', 'Clustered', 'Barrier', 'Relaxed GALS', 'Non Synced LIAF', 'Extreme Relaxed LIAF'), rotation=90)
+
+"""

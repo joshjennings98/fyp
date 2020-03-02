@@ -18,8 +18,8 @@ from matplotlib.ticker import EngFormatter
 # Clustered => m = n * r * (1 + c + d) * T, max (t_torepeater + max (t_betweenfpga) + max (t_fromrepeater))
 # Barrier => m = n * d * T * r, t = max(t_synapse_0..n) + k_barrier
 # Relaxed GALS => m = n * d * T, t = max ((t_synapse + t_return)_0..(relaxation * n))
-# Non synced Leaky Integrate and Fire => m = n * d * T * r, t = max (t_synapse_0..n)
-# Extreme Relaxed Leaky Integrate and Fire => m = n * d * T * r, t = max (t_synapse_0..n)
+# Non synced Leaky-Integrate-And-Fire => m = n * d * T * r, t = max (t_synapse_0..n)
+# Extreme Relaxed Leaky-Integrate-And-Fire => m = n * d * T * r, t = max (t_synapse_0..n)
 
 def galsMessagesFrac(degree : float, time : int, neurons : int) -> int:
     return neurons * time * (neurons * degree)
@@ -81,6 +81,7 @@ y7 = list(map(lambda el: extremeRelaxedLIAFMessagesFrac(degree, time, el, firePr
 y1f = list(map(lambda el: galsMessagesFixed(degree, time, el), x))
 y2f = list(map(lambda el: clockedMessagesFixed(degree, time, el, fireProb), x))
 y3f = list(map(lambda el: clusterMessagesFixed(degree, time, el, fireProb, clusterNum), x))
+y3f3 = list(map(lambda el: clusterMessagesFixed(degree, time, el, fireProb, 3), x))
 y4f = list(map(lambda el: barrierMessagesFixed(degree, time, el, fireProb), x))
 y5f = list(map(lambda el: relaxedGalsMessagesFixed(degree, time, el), x))
 y6f = list(map(lambda el: nonSyncedLIAFMessagesFixed(degree, time, el, fireProb), x))
@@ -96,10 +97,11 @@ ax2.set_ylabel("Message Count")
 ax2.yaxis.set_major_formatter(formatter0)
 firstN = 200
 ax2.plot(x[0:firstN], y3[0:firstN], label=f'Clustered ({clusterNum} clusters)')
-ax2.plot(x[0:firstN], y6[0:firstN], label='Non-Synchronised Leaky Integrate and Fire')
-ax2.plot(x[0:firstN], y7[0:firstN], label='Extreme Relaxed Leaky Integrate and Fire')
+ax2.plot(x[0:firstN], y6[0:firstN], label='Non-Synchronised Leaky-Integrate-And-Fire')
+ax2.plot(x[0:firstN], y7[0:firstN], label='Extreme Relaxed Leaky-Integrate-And-Fire')
 ax2.plot(x[0:firstN], y4[0:firstN], ":" ,label='Barrier')
 ax2.set_title(f"Degree = {degree * 100}%, Time steps = {time}, Firing rate = {fireProb}\n(Note: Message count identical for Leaky-Integrate-And-Fire and Barrier)", fontsize=10)
+#ax2.set_xscale("log")
 plt.legend()
 
 ax = fig.add_subplot(221)
@@ -107,14 +109,15 @@ ax.set_xlabel("Neuron Count")
 ax.xaxis.set_major_formatter(formatter0)
 ax.set_ylabel("Message Count")
 ax.yaxis.set_major_formatter(formatter0)
+ax.set_xscale("log")
 
 ax.plot(x, y1, label='GALS')
 ax.plot(x, y2, label='Clocked')
 ax.plot(x, y3, label=f'Clustered ({clusterNum} clusters)')
 ax.plot(x, y4, label='Barrier')
 ax.plot(x, y5, label='Relaxed GALS')
-ax.plot(x, y6, label='Non-Synchronised Leaky Integrate and Fire')
-ax.plot(x, y7, label='Extreme Relaxed Leaky Integrate and Fire')
+ax.plot(x, y6, label='Non-Synchronised Leaky-Integrate-And-Fire')
+ax.plot(x, y7, label='Extreme Relaxed Leaky-Integrate-And-Fire')
 ax.set_title(f"Degree = {degree * 100}%, Time steps = {time}, Firing rate = {fireProb}\n(Note: Message count identical for relaxed and normal GALS)", fontsize=10)
 plt.legend()
 
@@ -124,11 +127,13 @@ ax4.xaxis.set_major_formatter(formatter0)
 ax4.set_ylabel("Message Count")
 ax4.yaxis.set_major_formatter(formatter0)
 firstN = 200
-ax4.plot(x[0:firstN], y3f[0:firstN], label=f'Clustered ({clusterNum} clusters)')
-ax4.plot(x[0:firstN], y6f[0:firstN], label='Non-Synchronised Leaky Integrate and Fire')
-ax4.plot(x[0:firstN], y7f[0:firstN], label='Extreme Relaxed Leaky Integrate and Fire')
+ax4.plot(x[0:firstN], y3f3[0:firstN], label=f'Clustered (3 clusters)')
+ax4.plot(x[0:firstN], y1f[0:firstN], label=f'GALS')
+ax4.plot(x[0:firstN], y6f[0:firstN], label='Non-Synchronised Leaky-Integrate-And-Fire')
+ax4.plot(x[0:firstN], y7f[0:firstN], label='Extreme Relaxed Leaky-Integrate-And-Fire')
 ax4.plot(x[0:firstN], y4f[0:firstN], ":" ,label='Barrier')
-ax4.set_title(f"Degree = {degree * 100}%, Time steps = {time}, Firing rate = {fireProb}\n(Note: Message count identical for Leaky-Integrate-And-Fire and Barrier)", fontsize=10)
+ax4.set_title(f"Fixed Degree = {int(degree * 100)}, Time steps = {time}, Firing rate = {fireProb}\n(Note: Message count identical for Leaky-Integrate-And-Fire and Barrier)", fontsize=10)
+#ax4.set_xscale("log")
 plt.legend()
 
 ax3 = fig.add_subplot(223)
@@ -136,27 +141,30 @@ ax3.set_xlabel("Neuron Count")
 ax3.xaxis.set_major_formatter(formatter0)
 ax3.set_ylabel("Message Count")
 ax3.yaxis.set_major_formatter(formatter0)
+ax3.set_xscale("log")
 
 ax3.plot(x, y1f, label='GALS')
 ax3.plot(x, y2f, label='Clocked')
 ax3.plot(x, y3f, label=f'Clustered ({clusterNum} clusters)')
 ax3.plot(x, y4f, label='Barrier')
 ax3.plot(x, y5f, label='Relaxed GALS')
-ax3.plot(x, y6f, label='Non-Synchronised Leaky Integrate and Fire')
-ax3.plot(x, y7f, label='Extreme Relaxed Leaky Integrate and Fire')
-ax3.set_title(f"Degree = {degree * 100}%, Time steps = {time}, Firing rate = {fireProb}\n(Note: Message count identical for relaxed and normal GALS)", fontsize=10)
+ax3.plot(x, y6f, label='Non-Synchronised Leaky-Integrate-And-Fire')
+ax3.plot(x, y7f, label='Extreme Relaxed Leaky-Integrate-And-Fire')
+ax3.set_title(f"Fixed Degree = {int(degree * 100)}, Time steps = {time}, Firing rate = {fireProb}\n(Note: Message count identical for relaxed and normal GALS)", fontsize=10)
 
 plt.legend()
 fig.subplots_adjust(wspace = 0.3, hspace = 0.4)
 
+plt.show()
+
 yVals = [
     (y1, y1f, "GALS"), 
     (y2, y2f, "Clocked"), 
-    (y3, y3f, "Clustered"), 
+    (y3, y3f, f'Clustered ({clusterNum} clusters)'), 
     (y4, y4f, "Barrier"), 
     (y5, y5f, "Relaxed GALS"), 
-    (y6, y6f, "Non-Synchronised Leaky Integrate and Fire"), 
-    (y7, y7f, "Extreme Relaxed Leaky Integrate and Fire")
+    (y6, y6f, "Non-Synchronised Leaky-Integrate-And-Fire"), 
+    (y7, y7f, "Extreme Relaxed Leaky-Integrate-And-Fire")
     ]
 
 for y in yVals:
@@ -166,20 +174,19 @@ for y in yVals:
     ax2 = fig.add_subplot(122)
     ax1.set_xlabel("Neuron Count")
     ax2.set_xlabel("Neuron Count")
+    ax2.set_xscale("log")
     ax1.xaxis.set_major_formatter(formatter0)
     ax2.xaxis.set_major_formatter(formatter0)
     ax1.set_ylabel("Message Count")
     ax2.set_ylabel("Message Count")
     ax1.yaxis.set_major_formatter(formatter0)
     ax2.yaxis.set_major_formatter(formatter0)
-    ax1.set_title(f"Degree as a percentage of all nodes\nDegree = {degree * 100}%, Time steps = {time}, Firing rate = {fireProb}")
-    ax2.set_title(f"Fixed Degree\nDegree = {int(degree * 100)}, Time steps = {time}, Firing rate = {fireProb}")
+    ax1.set_title(f"Degree as a percentage of all neurons\nDegree = {degree * 100}%, Time steps = {time}, Firing rate = {fireProb}")
+    ax2.set_title(f"Degree as a fixed number of neurons\nDegree = {int(degree * 100)}, Time steps = {time}, Firing rate = {fireProb}")
     ax1.plot(x, y[0])
     ax2.plot(x, y[1])
 
-
 plt.show()
-
 
 """
 # GALS => t = max (t_synapse + t_return)_0..n
@@ -187,8 +194,8 @@ plt.show()
 # Clustered => t = max (t_torepeater + max (t_betweenfpga) + max (t_fromrepeater))
 # Barrier => t = max(t_synapse_0..n) + k_barrier
 # Relaxed GALS => t = max ((t_synapse + t_return)_0..(relaxation * n))
-# Non synced Leaky Integrate and Fire => t = max (t_synapse_0..n)
-# Extreme Relaxed Leaky Integrate and Fire => t = max (t_synapse_0..n)
+# Non synced Leaky-Integrate-And-Fire => t = max (t_synapse_0..n)
+# Extreme Relaxed Leaky-Integrate-And-Fire => t = max (t_synapse_0..n)
 
 ax3 = fig.add_subplot(133)
 menMeans = [20, 35, 30, 35, 27, 40, 12]

@@ -141,7 +141,7 @@ class Network(object):
         storageLeft = getFreeSpace()
         
         if (edgeFileSize < storageLeft):
-            with open (filename1, 'w') as f1, open (filename2, 'r') as f2:
+            with open (filename1, 'a') as f1, open (filename2, 'r') as f2:
                 print("Merging intermediate files.")
                 f1.writelines(f2)
                 os.rename(filename1, filename0)

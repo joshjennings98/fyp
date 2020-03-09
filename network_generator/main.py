@@ -28,13 +28,13 @@ params = [
     ([
         "a : float : 0.02 : s",
         "b : float : 0.2 : s",
-        f"v : float : {-65+15*r*r} : s",
-        f"u : float : {8-6*r*r} : s",
+        f"v : float : {-65+15} : sr",
+        f"u : float : {8-6} : sr",
         f"fanin : uint32_t : {K} : p"
     ], 0.8),
     ([
-        f"a : float : {0.02+0.08*r} : s",
-        f"b : float : {0.25-0.05*r} : s",
+        f"a : float : {0.02+0.08} : sr",
+        f"b : float : {0.25-0.05} : sr",
         "v : float : -65 : s",
         "u : float : 2 : s",
         f"fanin : uint32_t : {K} : p"

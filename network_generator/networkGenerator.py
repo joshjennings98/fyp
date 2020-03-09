@@ -64,7 +64,7 @@ class Neuron(object):
     def __init__(self, name : str, params : List[str], connections : List[int]) -> None:
         self.name = name
         self.props = list(map(lambda param: Param(param), params)) # Strip white space and turn to a better list
-        self.states = list(filter(lambda x: x.propState == "s", self.props))
+        self.states = list(filter(lambda x: x.propState == "s" or x.propState == "sr", self.props))
         self.connections = connections
 
 class Network(object):
@@ -119,7 +119,7 @@ class Network(object):
             count = 0 # Keep track of iteration
 
             for neuron in neurons:
-                neuronProps = ','.join(list(map(lambda prop : f"\"{prop.name}\":{prop.value}", neuron.props)))
+                neuronProps = ','.join(list(map(lambda prop : f"\"{prop.name}\":{prop.value if (prop.propState != 'sr') else float(prop.value) * rand()}", neuron.props)))
                 device = f"\t\t\t<DevI id=\"{neuron.name}\" type=\"neuron\"><P>{neuronProps}</P></DevI>\n"
                 f1.write(device)
         

@@ -10,7 +10,9 @@ import platform
 import sys
 
 def getFreeSpace():
-    """Return folder/drive free space (in megabytes)."""
+    """
+    Return folder/drive free space in bytes.
+    """
     if platform.system() == 'Windows':
         free_bytes = ctypes.c_ulonglong(0)
         ctypes.windll.kernel32.GetDiskFreeSpaceExW(ctypes.c_wchar_p('%CD%'), None, None, ctypes.pointer(free_bytes))

@@ -3,8 +3,21 @@ import random
 from xmlGenerator import *
 from typing import List, Generator
 from enum import Enum
-import itertools
-from os import system
+import os
+import shutil
+import ctypes
+import platform
+import sys
+
+def getFreeSpace():
+    """Return folder/drive free space (in megabytes)."""
+    if platform.system() == 'Windows':
+        free_bytes = ctypes.c_ulonglong(0)
+        ctypes.windll.kernel32.GetDiskFreeSpaceExW(ctypes.c_wchar_p('%CD%'), None, None, ctypes.pointer(free_bytes))
+        return free_bytes.value
+    else:
+        st = os.statvfs('/')
+        return st.f_bavail * st.f_frsize
 
 rand=random.random
 
@@ -69,7 +82,7 @@ class Network(object):
     
     Contains the following functions:
     * makeGraph - function called on initialisation to generate a graph
-    * saveGraph - saves the graph to 'name.xml'. Called by the user
+    * printGraph - saves the graph to 'name.xml'. Called by the user
     """
     def __init__(self, name : str, equations : List[str], threshold : str, neurons : Generator[Neuron, None, None], onReset : List[str], maxt : int) -> None:
         self.name = name
@@ -82,7 +95,7 @@ class Network(object):
    
     def makeGraph(self, neurons : Generator[Neuron, None, None], name : str, maxt : int, equations : List[str], threshold : str, onReset : List[str]) -> None:              
         """
-        Make a newwork graph based on the contructors parameters
+        Make a network graph based on the contructors parameters
         """
         baseNeuron = next(neurons)
         
@@ -93,6 +106,7 @@ class Network(object):
         equations = '\n\t\t'.join(list(map(lambda equ : f"\t\t\t\t{equ};", equations))) 
         onReset = '\n\t\t'.join(list(map(lambda equ: f"\t\t\t\t\t{equ.name} {equ.operator} deviceProperties->{equ.value};", onReset)))
         
+        filename0 = f"{self.name}.xml"
         filename1 = f"{self.name}1.xml"
         filename2 = f"{self.name}2.xml"
         with open(filename1, 'w') as f1, open (filename2, 'w') as f2:
@@ -122,9 +136,33 @@ class Network(object):
                     print(f"Generated {count} neurons.")
         
             f2.write("\t\t</EdgeInstances>\n\t</GraphInstance>\n</Graphs>")
+            
+        edgeFileSize = os.stat(filename2).st_size
+        storageLeft = getFreeSpace()
         
-        # TODO: MAKE WORK ON OTHER OPERATING SYSTEMS
-        system(f"cat {self.name}1.xml {self.name}2.xml > {self.name}.xml")
+        if (edgeFileSize < storageLeft):
+            with open (filename1, 'w') as f1, open (filename2, 'r') as f2:
+                print("Merging intermediate files.")
+                f1.writelines(f2)
+                os.rename(filename1, filename0)
+                print("Deleting duplicate files.")
+                os.remove(filename2)
+                print("File", filename0, "generated.")    
+        else:
+            print("The system needs to merge intermediate files.\n")
+            print("Python cannot efficiently remove the first line from a file whilst copying it to another file.")
+            print("This unfortunately means that the contents of the edges file need to be duplicated.\n")
+            print(f"Your edges file is {edgeFileSize} bytes, but you only have {storageLeft} bytes available.\n")
+            print("Since you do not have enough storage for this operation it has been terminated.")
+            print(f"The devices file and edges file have been saved as {filename1} and {filename2} respectively.")
+            print("You can keep these files and merge them yourself or you can delete them.\n")
+            x = "NULL"
+            while (x not in "yYnN"):
+                print(f"Would you like to delete {filename1} and {filename2}? (y/n)")
+                x = input()
+            if (x in "yY"):
+                os.remove(filename1)
+                os.remove(filename2)
 
     def printGraph(self) -> None:
         """

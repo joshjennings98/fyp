@@ -80,7 +80,7 @@ def devicesGen(properties : str, states : str, inits : str, assignments : str, e
 \t\t\t\t</ReadyToSend> 
 \t\t\t</DeviceType>"""
 
-def graphGen(name : str, devices : str, maxt: int, deviceInstances : List[str], edgeInstances : List[str]) -> str:
+def graphGen(name : str, devices : str, maxt: int) -> str:
     """
     Generate the XML for the entire graph, takes the devices and edges and attaches everyting together
     """
@@ -141,10 +141,4 @@ def graphGen(name : str, devices : str, maxt: int, deviceInstances : List[str], 
 \t<GraphInstance id="{name}_output" graphTypeId="{name}"> 
 \t\t<Properties> 
 \t\t\t"max_t":{maxt}
-\t\t</Properties> 
-\t\t<DeviceInstances>\t\t
-{"".join(deviceInstances)}\t\t</DeviceInstances> 
-\t\t<EdgeInstances> 
-{"".join(edgeInstances)}\t\t</EdgeInstances> 
-\t</GraphInstance> 
-</Graphs>"""
+\t\t</Properties>"""

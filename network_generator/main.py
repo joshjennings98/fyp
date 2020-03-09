@@ -1,6 +1,6 @@
 # main.py
-from networkGenerator import *
-from neuronListGenerator import genNeuronList
+from networkGenerator import Network, Neuron, rand
+from neuronListGenerator import genNeurons
 from random import randint
 
 # Differential equations
@@ -81,7 +81,7 @@ params = [
     ], 0.4)
 ]
 
-neurons1 = genNeuronList(5, params, 0.2) # No random things like the other version :(
+neurons1 = genNeurons(10000, params, 0.2) # No random things like the other version :(
 
-network = Network("Test_Network", equations, "v = 0.5", neurons, onReset, 10)
-network.saveGraph()
+network = Network("Test_Network", equations, "v = 0.5", neurons1, onReset, 10)
+network.printGraph()

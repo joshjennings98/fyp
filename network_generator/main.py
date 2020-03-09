@@ -15,12 +15,6 @@ onReset = [
     "u : += : u"
 ]
 
-############
-# Option 1 #
-############
-
-neurons = []
-
 Ne=80
 Ni=20
 K=20
@@ -28,60 +22,26 @@ K=20
 N=Ne+Ni
 K=min(N,K)
 
-for i in range(N):
-    name = f"n_{i}"
-    r = rand()
-    params2 = [
+r = rand()
+
+params = [
+    ([
         "a : float : 0.02 : s",
         "b : float : 0.2 : s",
         f"v : float : {-65+15*r*r} : s",
         f"u : float : {8-6*r*r} : s",
         f"fanin : uint32_t : {K} : p"
-    ] 
-    params1 = [
+    ], 0.8),
+    ([
         f"a : float : {0.02+0.08*r} : s",
         f"b : float : {0.25-0.05*r} : s",
         "v : float : -65 : s",
         "u : float : 2 : s",
         f"fanin : uint32_t : {K} : p"
-    ]
-    connections = [0 for k in range(N)]
-    for j in range(Ni):
-        while True:
-            p = randint(0, len(connections) - 1)
-            if connections[p] == 0 and p != j:
-                connections[p] = 1
-                break
-            
-    params = params1 if i < Ni else params2
-    neuron = Neuron(name, params, connections)
-    neurons.append(neuron)
-
-############
-# Option 2 #
-############
-
-equations = [
-    "v += I"
+    ], 0.2)
 ]
 
-OnReset = [
-    "v : = : v"
-]
+neurons = genNeurons(100, params, 0.2) # No random things like the other version :(
 
-params = [
-    ([
-        "v : float : 0.2 : s",
-    ], 0.4),
-    ([
-        "v : float : 0.8 : s",
-    ], 0.2),
-    ([
-        "v : float : 0.6 : s",
-    ], 0.4)
-]
-
-neurons1 = genNeurons(5, params, 0.2) # No random things like the other version :(
-
-network = Network("Test_Network", equations, "v = 0.5", neurons1, onReset, 10)
-# network.printGraph()
+network = Network("test_network", equations, "v = 0.5", neurons, onReset, 10)
+network.printGraph()

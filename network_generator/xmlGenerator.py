@@ -11,6 +11,7 @@ def devicesGen(properties : str, states : str, inits : str, assignments : str, e
 \t\t\t\t<Properties> 
 \t\t\t\t\t<Scalar name="seed" type="uint32_t"/>
 \t\t\t\t\t<Scalar name="Ir" type="float"/>
+\t\t\t\t\t<Scalar name="refractory" type="uint32_t" default="0"/> 
 \t\t{properties} 
 \t\t\t\t</Properties> 
 \t\t\t\t<State> 
@@ -19,6 +20,7 @@ def devicesGen(properties : str, states : str, inits : str, assignments : str, e
 \t\t\t\t\t<Scalar name="pendingFires" type="uint32_t"/>
 \t\t\t\t\t<Scalar name="rts" type="uint32_t"/> 
 \t\t\t\t\t<Scalar name="t" type="uint32_t"/>
+\t\t\t\t\t<Scalar name="finishRefractory" type="uint32_t"/>
 \t\t\t\t\t<Scalar name="I" type="float"/> 
 \t\t{states}
 \t\t\t\t</State> 
@@ -30,6 +32,7 @@ def devicesGen(properties : str, states : str, inits : str, assignments : str, e
 \t\t\t\t\tdeviceState->I=deviceProperties->Ir * grng(deviceState->rng);
 \t\t\t\t\tdeviceState->Icount=0;
 \t\t\t\t\tdeviceState->pendingFires=1;
+\t\t\t\t\tdeviceState->finishRefractory=0;
 \t\t\t\t\tdeviceState->rts = RTS_FLAG_fire;		   
 \t\t\t\t\t]]>
 \t\t\t\t</OnInit> 
@@ -56,10 +59,12 @@ def devicesGen(properties : str, states : str, inits : str, assignments : str, e
 \t\t\t\t\t\t// Assignments
 \t\t{assignments}
 \t\t\t\t\t\tfloat &I = deviceState->I; // Assign I\n
-\t\t{equations}\n
+\t\t\t\t\t\tif (deviceState->t >= deviceState->finishRefractory) {{
+\t\t\t{equations}
+\t\t\t\t\t\t}}\n
 \t\t\t\t\t\tmessage->fired = {threshold};
-\t\t\t\t\t\t
 \t\t\t\t\t\tif(message->fired){{
+\t\t\t\t\t\t\tdeviceState->finishRefractory = deviceState->t + deviceProperties->refractory;
 \t\t{onReset}
 \t\t\t\t\t\t}}\n
 \t\t\t\t\t\tdeviceState->I=deviceProperties->Ir * grng(deviceState->rng);

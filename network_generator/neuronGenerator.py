@@ -1,9 +1,9 @@
-# neuronListGenerator.py
+# neuronGenerator.py
 from networkGenerator import Neuron
 from random import randint, random
 from typing import Tuple, List, Generator
 
-def genNeurons(num : int, params : List[Tuple[List[str], float]], connectionProb : float) -> Generator[Neuron, None, None]:
+def genNeurons(num : int, params : List[Tuple[List[str], float, float]], connectionProb : float) -> Generator[Neuron, None, None]:
     """
     A function for generating a list of neurons.
     * num - number of neurons to create
@@ -11,7 +11,7 @@ def genNeurons(num : int, params : List[Tuple[List[str], float]], connectionProb
     * connectionProb - a rough probability for how many neurons each neuron is connected to
     """
     # yield first neuron twice since it's properties are used
-    yield Neuron("n_0", params[0][0], [0 for k in range(num)])
+    yield Neuron("n_0", params[0][0], [0 for k in range(num)], params[0][2])
     i = 0
     for param in params:
         for j in range(int(num * param[1])):
@@ -27,6 +27,6 @@ def genNeurons(num : int, params : List[Tuple[List[str], float]], connectionProb
             else:
                 connections = [1 for k in range(num)]
                     
-            neuron = Neuron(name, param[0], connections)
+            neuron = Neuron(name, param[0], connections, param[2])
             yield neuron
             i += 1 

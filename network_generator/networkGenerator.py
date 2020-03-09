@@ -63,11 +63,12 @@ class Neuron(object):
 
     Initialise with Neuron(name, props, connections)
     """
-    def __init__(self, name : str, params : List[str], connections : List[int]) -> None:
+    def __init__(self, name : str, params : List[str], connections : List[int], refractory : int) -> None:
         self.name = name
         self.props = list(map(lambda param: Param(param), params)) # Strip white space and turn to a better list
         self.states = list(filter(lambda x: x.propState == "s" or x.propState == "sr", self.props))
         self.connections = connections
+        self.refractory = refractory
 
 class Network(object):
     """
@@ -105,12 +106,13 @@ class Network(object):
         states = '\n\t\t'.join(list(map(lambda state : f"\t\t\t<Scalar name=\"{state.name}\" type=\"{state.type}\"/>", baseNeuron.states)))
         inits = '\n\t\t'.join(list(map(lambda var : f"\t\t\tdeviceState->{var.name} = deviceProperties->{var.name}; // Set initial {var.name} value", baseNeuron.states)))
         assignments = '\n\t\t'.join(list(map(lambda var : f"\t\t\t\t{var.type} &{var.name} = deviceState->{var.name}; // Assign {var.name}", baseNeuron.states)))
-        equations = '\n\t\t'.join(list(map(lambda equ : f"\t\t\t\t{equ};", equations))) 
+        equations = '\n\t\t\t'.join(list(map(lambda equ : f"\t\t\t\t{equ};", equations))) 
         onReset = '\n\t\t'.join(list(map(lambda equ: f"\t\t\t\t\t{equ.name} {equ.operator} deviceProperties->{equ.value};", onReset)))
         
         filename0 = f"{self.name}.xml"
         filename1 = f"{self.name}1.xml"
         filename2 = f"{self.name}2.xml"
+
         with open(filename1, 'w') as f1, open (filename2, 'w') as f2:
             devices =  devicesGen(properties, states, inits, assignments, equations, threshold, onReset)
             graphStuff = graphGen(name, devices, maxt)
@@ -122,7 +124,7 @@ class Network(object):
 
             for neuron in neurons:
                 neuronProps = ','.join(list(map(lambda prop : f"\"{prop.name}\":{prop.value if (prop.propState != 'sr') else float(prop.value) * rand()}", neuron.props)))
-                device = f"\t\t\t<DevI id=\"{neuron.name}\" type=\"neuron\"><P>{neuronProps}</P></DevI>\n"
+                device = f"\t\t\t<DevI id=\"{neuron.name}\" type=\"neuron\"><P>{neuronProps},\"refractory\":{neuron.refractory}</P></DevI>\n"
                 f1.write(device)
         
                 connections = []

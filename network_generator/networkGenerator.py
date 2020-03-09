@@ -130,8 +130,6 @@ class Network(object):
         """
         Print the current Network type to a file
         """
-        filename1 = f"{self.name}1.xml"
-        filename2 = f"{self.name}2.xml"
-        with open(filename1, 'r') as f1, open(filename2, 'r') as f2:
-            graph = f1.read()
-            graph += f2.read()
+        filename = f"{self.name}.xml"
+        with open(filename, 'r') as f:
+            print(f.read())

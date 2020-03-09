@@ -81,7 +81,7 @@ params = [
     ], 0.4)
 ]
 
-neurons1 = genNeurons(10000, params, 0.2) # No random things like the other version :(
+neurons1 = genNeurons(5, params, 0.2) # No random things like the other version :(
 
 network = Network("Test_Network", equations, "v = 0.5", neurons1, onReset, 10)
 network.printGraph()

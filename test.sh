@@ -1,5 +1,17 @@
 # Generate network
-python3 network_generator/main.py $1
+if [ $# -lt 2 ];
+then
+    python3 network_generator/nonConfigInitExample.py
+    graph_schema-4.2.0/tools/compile_graph_as_provider.sh test_network.xml
+    rm -f graph_schema-4.2.0/providers/test_network.graph.so
+    mv test_network.graph.so graph_schema-4.2.0/providers
+    cd graph_schema-4.2.0
+    bin/epoch_sim /home/josh/fyp/test_network.xml
+    cd ..
+    exit 1
+else
+    python3 network_generator/main.py $2
+fi
 
 # Compile network
 graph_schema-4.2.0/tools/compile_graph_as_provider.sh $1.xml

@@ -1,14 +1,14 @@
-# nonConfigInitEaxmple.py
+# main.py
 #
 # This version of the network doesn't use the config file.
 # It shows how the network is viewed in the backend and shouldn't be deleted.
 # This way you can do more complex stuff that isn't possible using the config file.
 
+import sys
 from networkGenerator import Network, Neuron, rand
 from neuronGenerator import genNeurons
 
-
-network_name = "test_network"
+network_name = "test_network" # Don't change this if using test.sh
 
 # Differential equations
 equations = [
@@ -40,7 +40,7 @@ params = [
     ], 0.2, 0, 0.2)
 ]
 
-neurons = genNeurons(5, params) # neurons needs to be a generator of neurons and a generator of connections
+neurons = genNeurons(100, params) # neurons needs to be a generator of neurons and a generator of connections
 
 # Generate and print network
 network = Network(network_name, equations, "v >= 0.5", neurons, onReset, 10)

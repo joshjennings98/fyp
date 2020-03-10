@@ -1,25 +1,11 @@
 # network_generator.py
 import random
 from xmlGenerator import *
-from typing import List, Generator
+from typing import List, Generator, Tuple
 from enum import Enum
+import threading
+import time
 import os
-import shutil
-import ctypes
-import platform
-import sys
-
-def getFreeSpace():
-    """
-    Return folder/drive free space in bytes.
-    """
-    if platform.system() == 'Windows':
-        free_bytes = ctypes.c_ulonglong(0)
-        ctypes.windll.kernel32.GetDiskFreeSpaceExW(ctypes.c_wchar_p('%CD%'), None, None, ctypes.pointer(free_bytes))
-        return free_bytes.value
-    else:
-        st = os.statvfs('/')
-        return st.f_bavail * st.f_frsize
 
 rand=random.random
 
@@ -63,12 +49,24 @@ class Neuron(object):
 
     Initialise with Neuron(name, props, connections)
     """
-    def __init__(self, name : str, params : List[str], connections : List[int], refractory : int) -> None:
+    def __init__(self, name : str, params : List[str], refractory : int) -> None:
         self.name = name
         self.props = list(map(lambda param: Param(param), params)) # Strip white space and turn to a better list
         self.states = list(filter(lambda x: x.propState == "s" or x.propState == "sr", self.props))
-        self.connections = connections
         self.refractory = refractory
+
+class NeuronConnections(object):
+    """
+    A class containing the connections for neurons.
+    It contains the following parameters:
+    * name - the name of the neuron
+    * connections - an array of 1 or 0 stating the connection of a neuron to other neurons
+
+    Initialise with NeuronConnections(name, props, connections)
+    """
+    def __init__(self, name : str, connections : List[int]) -> None:
+        self.name = name
+        self.connections = connections
 
 class Network(object):
     """
@@ -77,7 +75,7 @@ class Network(object):
     * name - the name of the network
     * threshold - the threshold equation for setting when a neuron fires
     * equations - the list of equations used by the network
-    * neurons -  a list of neurons (using Neuron class)
+    * neurons -  a tuple containing a generator for the neuron properties (Neuron class) and connections (NeuronConnections class)
     * onReset - a set of assignments that happen when the threshold is met (format: state variable : operator : network property)
     * maxt - the maximum number of time steps
     
@@ -87,7 +85,7 @@ class Network(object):
     * makeGraph - function called on initialisation to generate a graph
     * printGraph - saves the graph to 'name.xml'. Called by the user
     """
-    def __init__(self, name : str, equations : List[str], threshold : str, neurons : Generator[Neuron, None, None], onReset : List[str], maxt : int) -> None:
+    def __init__(self, name : str, equations : List[str], threshold : str, neurons : Tuple[Generator[Neuron, None, None], Generator[NeuronConnections, None, None]], onReset : List[str], maxt : int) -> None:
         self.name = name
         self.equations = equations
         self.threshold = threshold
@@ -96,10 +94,30 @@ class Network(object):
         self.onReset = list(map(lambda equ: OnReset(equ), onReset))
         self.makeGraph(self.neurons, self.name, self.maxt, self.equations, self.threshold, self.onReset)
    
-    def makeGraph(self, neurons : Generator[Neuron, None, None], name : str, maxt : int, equations : List[str], threshold : str, onReset : List[str]) -> None:              
+    def makeGraph(self, neurons : Tuple[Generator[Neuron, None, None], Generator[NeuronConnections, None, None]], name : str, maxt : int, equations : List[str], threshold : str, onReset : List[str]) -> None:              
         """
         Make a network graph based on the contructors parameters
         """
+        def printDevices() -> None:
+            while activateTimer1 == True:
+                print(f"Generated {int(count / numNeurons * 100)}% of devices ({count}).")
+                time.sleep(1)
+        
+        def printEdges() -> None:
+            while activateTimer2 == True:
+                if (activateTimer1 == False):
+                    print(f"Generated {int(count / numNeurons * 100)}% of edges ({countEdges}).")
+                time.sleep(1)
+
+        t1 = threading.Timer(1, printDevices)
+        t2 = threading.Timer(1, printEdges)
+        t1.start()
+        t2.start()
+
+        activateTimer1 = False
+        activateTimer2 = False
+    
+        neurons, neuronConnections, numNeurons = neurons
         baseNeuron = next(neurons)
         
         properties = '\n\t\t'.join(list(map(lambda prop : f"\t\t\t<Scalar name=\"{prop.name}\" type=\"{prop.type}\" default=\"{prop.value}\"/>", baseNeuron.props)))
@@ -109,64 +127,54 @@ class Network(object):
         equations = '\n\t\t\t'.join(list(map(lambda equ : f"\t\t\t\t{equ};", equations))) 
         onReset = '\n\t\t'.join(list(map(lambda equ: f"\t\t\t\t\t{equ.name} {equ.operator} deviceProperties->{equ.value};", onReset)))
         
-        filename0 = f"{self.name}.xml"
-        filename1 = f"{self.name}1.xml"
-        filename2 = f"{self.name}2.xml"
+        filename = f"{self.name}.xml"
 
-        with open(filename1, 'w') as f1, open (filename2, 'w') as f2:
+        with open(filename, 'w') as f:
+            countEdges = 0
+            count = 0
+            activateTimer2 = True
             devices =  devicesGen(properties, states, inits, assignments, equations, threshold, onReset)
             graphStuff = graphGen(name, devices, maxt)
-            f1.writelines(graphStuff)
-            f1.write("\t\t<DeviceInstances>\t\t\n")
-            f2.write("\t\t</DeviceInstances>\n\t\t<EdgeInstances>\n")
+            activateTimer1 = True
 
-            count = 0 # Keep track of iteration
+            f.writelines(graphStuff)
+            f.write("\t\t<DeviceInstances>\t\t\n")
+
+            print("Generating devices.")
 
             for neuron in neurons:
                 neuronProps = ','.join(list(map(lambda prop : f"\"{prop.name}\":{prop.value if (prop.propState != 'sr') else float(prop.value) * rand()}", neuron.props)))
                 device = f"\t\t\t<DevI id=\"{neuron.name}\" type=\"neuron\"><P>{neuronProps},\"refractory\":{neuron.refractory}</P></DevI>\n"
-                f1.write(device)
-        
+                f.write(device)
+                count += 1     
+
+            count = 0
+            countEdges = 0
+            activateTimer1 = False
+
+            print(f"Generated all devices.")
+            print("Generating edges.")
+
+            f.write("\t\t</DeviceInstances>\n\t\t<EdgeInstances>\n")
+            
+            for neuron in neuronConnections:
                 connections = []
                 for connection in range(len(neuron.connections)): 
+                    countEdges += 1
                     if neuron.connections[connection] == 1: 
                         weight = -rand() if rand() > 0.8 else 0.5 * rand() # change to better random values
                         edge = f"\t\t\t<EdgeI path=\"{neuron.name}:input-n_{connection}:fire\"><P>\"weight\":{weight}</P></EdgeI>\n"
                         connections.append(edge)
-                f2.write("".join(connections))
-
                 count += 1
-                if count % 200 == 0:
-                    print(f"Generated {count} neurons.")
+                f.write("".join(connections))
+                
+            print(f"Generated all edges.")
+            activateTimer2 = False
+
+            f.write("\t\t</EdgeInstances>\n\t</GraphInstance>\n</Graphs>")
         
-            f2.write("\t\t</EdgeInstances>\n\t</GraphInstance>\n</Graphs>")
-            
-        edgeFileSize = os.stat(filename2).st_size
-        storageLeft = getFreeSpace()
-        
-        if (edgeFileSize < storageLeft):
-            with open (filename1, 'a') as f1, open (filename2, 'r') as f2:
-                print("Merging intermediate files.")
-                f1.writelines(f2)
-                os.rename(filename1, filename0)
-                print("Deleting duplicate files.")
-                os.remove(filename2)
-                print("File", filename0, "generated.")    
-        else:
-            print("The system needs to merge intermediate files.\n")
-            print("Python cannot efficiently remove the first line from a file whilst copying it to another file.")
-            print("This unfortunately means that the contents of the edges file need to be duplicated.\n")
-            print(f"Your edges file is {edgeFileSize} bytes, but you only have {storageLeft} bytes available.\n")
-            print("Since you do not have enough storage for this operation it has been terminated.")
-            print(f"The devices file and edges file have been saved as {filename1} and {filename2} respectively.")
-            print("You can keep these files and merge them yourself or you can delete them.\n")
-            x = "NULL"
-            while (x not in "yYnN"):
-                print(f"Would you like to delete {filename1} and {filename2}? (y/n)")
-                x = input()
-            if (x in "yY"):
-                os.remove(filename1)
-                os.remove(filename2)
+        t1.cancel()
+        t2.cancel()
 
     def printGraph(self) -> None:
         """

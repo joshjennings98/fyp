@@ -36,22 +36,22 @@ if __name__ == "__main__":
         ([
             "a : float : 0.02 : s",
             "b : float : 0.2 : s",
-            f"v : float : {-65+15} : sr",
+            f"v : float : {-65+15} : sr", # sr is state but the value will be multipled by a random number between 0 and 1
             f"u : float : {8-6} : sr",
             f"fanin : uint32_t : {K} : p"
-        ], 0.8, 0), # Final number is refractory period
+        ], 0.8, 0, 0.2), # 2nd to last number is refractory period, last is connection probability
         ([
             f"a : float : {0.02+0.08} : sr",
             f"b : float : {0.25-0.05} : sr",
             "v : float : -65 : s",
             "u : float : 2 : s",
             f"fanin : uint32_t : {K} : p"
-        ], 0.2, 0)
+        ], 0.2, 0, 0.2)
     ]
 
-    neurons = genNeurons(100, params, 0.2) # No random things like the other version :(
+    neurons = genNeurons(10000, params)
 
     network = Network(network_name, equations, "v >= 0.5", neurons, onReset, 10)
-    network.printGraph()
+    # network.printGraph()
 
 

@@ -1,4 +1,4 @@
-# main.py
+# nonConfigInitExample.py
 #
 # This version of the network doesn't use the config file.
 # It shows how the network is viewed in the backend and shouldn't be deleted.

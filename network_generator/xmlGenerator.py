@@ -1,4 +1,4 @@
-# horible_string_stuff.py
+# xmlGenerator.py
 from typing import List
 
 def devicesGen(properties : str, states : str, inits : str, assignments : str, equations : str, threshold : str, onReset : str) -> str:

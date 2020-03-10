@@ -2,7 +2,6 @@
 import random
 from xmlGenerator import *
 from typing import List, Generator, Tuple
-from enum import Enum
 import threading
 import time
 import os

@@ -1,0 +1,39 @@
+name: 
+test_network;
+
+equations:
+v = 0.04 * v * v + 5 * v + 140 - u + I,
+u = a * (b * v - u);
+
+threshold:
+v >= 0.5;
+
+reset:
+v = v,
+u += u;
+
+parameters 1:
+a = 0.02,
+b = 0.2,
+v = -50r,
+u = 2r,
+property fanin = 20,
+fraction = 0.8,
+refractory = 0,
+connectionProb = 0.2;
+
+parameters 2:
+a = 0.1r,
+b = 0.2r,
+v = -65,
+u = 2,
+property fanin = 20,
+fraction = 0.2,
+refractory = 0,
+connectionProb = 0.2;
+
+number:
+100;
+
+maxt:
+10;

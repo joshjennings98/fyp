@@ -92,34 +92,43 @@ class Network(object):
         self.neurons = neurons
         self.maxt = maxt
         self.onReset = list(map(lambda equ: OnReset(equ), onReset))
+        self.filename = f"{self.name}.xml"
         self.makeGraph(self.neurons, self.name, self.maxt, self.equations, self.threshold, self.onReset)
-   
+
     def makeGraph(self, neurons : Tuple[Generator[Neuron, None, None], Generator[NeuronConnections, None, None]], name : str, maxt : int, equations : List[str], threshold : str, onReset : List[str]) -> None:              
         """
         Make a network graph based on the contructors parameters
         """
         def printDevices() -> None:
+            """
+            Print the percentage of devices generated
+            """
             while activateTimer1 == True:
                 print(f"Generated {int(count / numNeurons * 100)}% of devices ({count}).")
                 time.sleep(1)
         
         def printEdges() -> None:
+            """
+            Print the percentage of edges generated
+            """
             while activateTimer2 == True:
                 if (activateTimer1 == False):
                     print(f"Generated {int(count / numNeurons * 100)}% of edges ({countEdges}).")
                 time.sleep(1)
 
+        # Timer stuff for printing percentage done each second
         t1 = threading.Timer(1, printDevices)
         t2 = threading.Timer(1, printEdges)
         t1.start()
         t2.start()
-
         activateTimer1 = False
         activateTimer2 = False
     
+        # Split up neurons tuple
         neurons, neuronConnections, numNeurons = neurons
         baseNeuron = next(neurons)
         
+        # Generate C code
         properties = '\n\t\t'.join(list(map(lambda prop : f"\t\t\t<Scalar name=\"{prop.name}\" type=\"{prop.type}\" default=\"{prop.value}\"/>", baseNeuron.props)))
         states = '\n\t\t'.join(list(map(lambda state : f"\t\t\t<Scalar name=\"{state.name}\" type=\"{state.type}\"/>", baseNeuron.states)))
         inits = '\n\t\t'.join(list(map(lambda var : f"\t\t\tdeviceState->{var.name} = deviceProperties->{var.name}; // Set initial {var.name} value", baseNeuron.states)))
@@ -127,18 +136,18 @@ class Network(object):
         equations = '\n\t\t\t'.join(list(map(lambda equ : f"\t\t\t\t{equ};", equations))) 
         onReset = '\n\t\t'.join(list(map(lambda equ: f"\t\t\t\t\t{equ.name} {equ.operator} deviceProperties->{equ.value};", onReset)))
         
-        filename = f"{self.name}.xml"
-
-        with open(filename, 'w') as f:
+        with open(self.filename, 'w') as f:
             countEdges = 0
             count = 0
             activateTimer2 = True
-            devices =  devicesGen(properties, states, inits, assignments, equations, threshold, onReset)
-            graphStuff = graphGen(name, devices, maxt)
             activateTimer1 = True
 
+            # Generate skeleton XML
+            devices =  devicesGen(properties, states, inits, assignments, equations, threshold, onReset)
+            graphStuff = graphGen(name, devices, maxt)
+            
             f.writelines(graphStuff)
-            f.write("\t\t<DeviceInstances>\t\t\n")
+            f.write("\n\t\t<DeviceInstances>\t\t\n")
 
             print("Generating devices.")
 
@@ -148,31 +157,33 @@ class Network(object):
                 f.write(device)
                 count += 1     
 
+            f.write("\t\t</DeviceInstances>\n\t\t<EdgeInstances>\n")
+            
             count = 0
             countEdges = 0
             activateTimer1 = False
 
-            print(f"Generated all devices.")
+            print("Generated all devices.")
             print("Generating edges.")
 
-            f.write("\t\t</DeviceInstances>\n\t\t<EdgeInstances>\n")
-            
             for neuron in neuronConnections:
                 connections = []
-                for connection in range(len(neuron.connections)): 
+                for idx, connection in enumerate(neuron.connections): 
                     countEdges += 1
-                    if neuron.connections[connection] == 1: 
-                        weight = -rand() if rand() > 0.8 else 0.5 * rand() # change to better random values
-                        edge = f"\t\t\t<EdgeI path=\"{neuron.name}:input-n_{connection}:fire\"><P>\"weight\":{weight}</P></EdgeI>\n"
+                    if connection == 1: 
+                        weight = -rand() if rand() > 0.8 else 0.5 * rand() # TODO: change to better random values
+                        edge = f"\t\t\t<EdgeI path=\"{neuron.name}:input-n_{idx}:fire\"><P>\"weight\":{weight}</P></EdgeI>\n"
                         connections.append(edge)
                 count += 1
                 f.write("".join(connections))
                 
-            print(f"Generated all edges.")
-            activateTimer2 = False
-
+            print("Generated all edges.")
+            
             f.write("\t\t</EdgeInstances>\n\t</GraphInstance>\n</Graphs>")
+
+            activateTimer2 = False
         
+        # Make sure to stop timers
         t1.cancel()
         t2.cancel()
 
@@ -180,6 +191,5 @@ class Network(object):
         """
         Print the current Network type to a file
         """
-        filename = f"{self.name}.xml"
-        with open(filename, 'r') as f:
+        with open(self.filename, 'r') as f:
             print(f.read())

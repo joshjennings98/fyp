@@ -10,7 +10,7 @@ def genNeuronProperties(num : int, params : List[Tuple[List[str], float, float, 
     * params - the list tuples of (params for the neurons, fraction of neurons with this set of params) <- should add up to 1.0
     * connectionProb - a rough probability for how many neurons each neuron is connected to
     """
-    # yield first neuron twice since it's properties are used
+    # yield first neuron twice since it's properties are used for initialisation
     yield Neuron("n_0", params[0][0], params[0][2])
     i = 0
     for param in params:

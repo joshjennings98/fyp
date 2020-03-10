@@ -49,7 +49,7 @@ if __name__ == "__main__":
         ], 0.2, 0, 0.2)
     ]
 
-    neurons = genNeurons(10000, params)
+    neurons = genNeurons(5, params) # neurons needs to be a generator of neurons and a generator of connections
 
     network = Network(network_name, equations, "v >= 0.5", neurons, onReset, 10)
     # network.printGraph()

@@ -10,18 +10,14 @@ def parseParam(param : str) -> str:
     "name : value type : value : deviceType"
     """
     param = list(filter(lambda x: x != '', re.split(r'[=\s]\s*', param)))
-    if (param[0] != "property"):
-        name = param[0].replace(' ', '')
-        vtype = "float" if "." in param[1] or "r" in param[1] else "uint32_t"
-        value = param[1].replace('r', '')
-        random = "r" if "r" in param[1] else ""
-        deviceType = "s"
-    else:
-        name = param[1].replace(' ', '')
-        vtype = "float" if "." in param[2] or "r" in param[2] else "uint32_t"
-        value = param[2].replace('r', '')
-        random = "r" if "r" in param[2] else ""
-        deviceType = "p"
+    p, propOrState = (1, "p") if param[0] == "property" else (0, "s")
+    
+    name = param[p].replace(' ', '')
+    vtype = "float" if "." in param[p + 1] or "r" in param[p + 1] else "uint32_t"
+    value = param[p + 1].replace('r', '')
+    random = "r" if "r" in param[p + 1] else ""
+    deviceType = propOrState
+
     return f"{name} : {vtype} : {value} : {deviceType}{random}"
 
 def makeFromConfig(filename : str, printNetwork : bool = False) -> None:

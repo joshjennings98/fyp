@@ -2,11 +2,11 @@ name:
 test_network;
 
 equations:
-v = 0.04 * v * v + 5 * v + 140 - u + I,
-u = a * (b * v - u);
+v += 0.04 * v * v + 5 * v + 140 - u + I,
+u += a * (b * v - u);
 
 threshold:
-v >= 0.5;
+v >= 30;
 
 reset:
 v = v,
@@ -15,7 +15,7 @@ u += u;
 parameters 1:
 a = 0.02,
 b = 0.2,
-v = -50r,
+v = -65r,
 u = 2r,
 property fanin = 20,
 fraction = 0.8,
@@ -36,4 +36,4 @@ number:
 100;
 
 maxt:
-10;
+1000;

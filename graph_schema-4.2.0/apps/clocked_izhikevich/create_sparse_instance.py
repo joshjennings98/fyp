@@ -21,7 +21,7 @@ Ne=80
 Ni=20
 K=20
 
-max_time=1000
+max_time=100
 
 if len(sys.argv)>1:
     Ne=int(sys.argv[1])
@@ -84,4 +84,7 @@ for dst in range(N):
         res.add_edge_instance(ei)
 
 sys.stderr.write("Saving graph\n")
-save_graph(res,sys.stdout)
+save_graph(res,"test_clock.xml")
+
+# with open("test.xml", 'w') as f:
+#    f.writelines

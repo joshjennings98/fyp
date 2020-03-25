@@ -8,6 +8,6 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         configFileLoc = sys.argv[1]
     else:   
-        configFileLoc = 'network_generator/config'
+        configFileLoc = '../config'
 
     makeFromConfig(configFileLoc)

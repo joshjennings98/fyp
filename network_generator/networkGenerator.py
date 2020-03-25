@@ -142,21 +142,26 @@ class Network(object):
             activateTimer1 = True
 
             # Generate skeleton XML
-            devices =  devicesGen(properties, states, inits, assignments, equations, threshold, onReset)
-            graphStuff = graphGen(name, devices, maxt)
+            devices =  devicesGenClocked(properties, states, inits, assignments, equations, threshold, onReset)
+            graphStuff = graphGenClocked(name, devices, maxt)
             
             f.writelines(graphStuff)
-            f.write("\n\t\t<DeviceInstances>\t\t\n")
+            f.write("\n\t\t<DeviceInstances>\t\t")
+            f.write(f"\n\t\t\t<DevI id=\"clock\" type=\"clock\"><P>\"neuronCount\":{numNeurons}</P></DevI>\n")
 
             print("Generating devices.")
 
             for neuron in neurons:
-                neuronProps = ','.join(list(map(lambda prop : f"\"{prop.name}\":{prop.value if (prop.propState != 'sr') else float(prop.value) * rand()}", neuron.props)))
+                neuronProps = ','.join(list(map(lambda prop : f"\"{prop.name}\":{prop.value if (prop.propState != 'sr') else round(float(prop.value) * 0.001 * random.randrange(800, 1000, 1), 3)}", neuron.props)))
                 device = f"\t\t\t<DevI id=\"{neuron.name}\" type=\"neuron\"><P>{neuronProps},\"refractory\":{neuron.refractory}</P></DevI>\n"
                 f.write(device)
                 count += 1     
 
             f.write("\t\t</DeviceInstances>\n\t\t<EdgeInstances>\n")
+
+            # Clocked version TODO: Add options for Clocked and gals
+            for i in range(numNeurons):
+                f.write(f"\t\t\t<EdgeI path=\"n_{i}:tick-clock:tick\" />\n\t\t\t<EdgeI path=\"clock:tock-n_{i}:tock\" />\n")
             
             count = 0
             countEdges = 0

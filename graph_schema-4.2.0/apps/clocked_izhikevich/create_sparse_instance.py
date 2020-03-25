@@ -17,11 +17,11 @@ appBase=os.path.dirname(os.path.realpath(__file__))
 src=appBase+"/clocked_izhikevich_graph_type.xml"
 (graphTypes,graphInstances)=load_graph_types_and_instances(src,src)
 
-Ne=80
-Ni=20
-K=20
+Ne=800
+Ni=200
+K=200
 
-max_time=100
+max_time=2000
 
 if len(sys.argv)>1:
     Ne=int(sys.argv[1])
@@ -84,7 +84,4 @@ for dst in range(N):
         res.add_edge_instance(ei)
 
 sys.stderr.write("Saving graph\n")
-save_graph(res,"test_clock.xml")
-
-# with open("test.xml", 'w') as f:
-#    f.writelines
+save_graph(res,"test_clock2.xml")

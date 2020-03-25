@@ -1,6 +1,6 @@
 
 # Compile network
-graph_schema-4.2.0/tools/compile_graph_as_provider.sh test_clock.xml
+graph_schema-4.2.0/tools/compile_graph_as_provider.sh test_clock2.xml
 # graph_schema-4.2.0/tools/compile_graph_as_provider.sh $1.xml
 
 
@@ -16,7 +16,7 @@ mv clocked_izhikevich.graph.so graph_schema-4.2.0/providers
 cd graph_schema-4.2.0
 
 # Run epoch_sim
-bin/epoch_sim /home/josh/fyp/test_clock.xml 2> ../log1.txt
+bin/epoch_sim /home/josh/fyp/test_clock2.xml 2> ../log1.txt
 
 # Go back to the main directory
 cd ..

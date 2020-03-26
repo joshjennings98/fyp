@@ -2,10 +2,20 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Tuple, List
 
 def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000, title : str = "title", handlerLogMessage : str = "FIRE!") -> None:
+    """
+    A simple function for plotting the output of epochsim outputs.
+    To generate the log file when running epochsim add ' 2> filename' to the end of the epochsim command.
     
+    It contains the following parameters:
+    * filename - the silename of the log file
+    * type - specify either 'when' for a graph of which neuron fires each epoch, or 'quantity' to print the quantity of neurons firing per epoch.
+    * numEpochs - the number of epochs that you want to plot from epochsim (default 6000)
+    * numNeurons - the number of neurons that you want to plot from epochsim (default 1000)
+    * title - the title of the plot (default 'title')
+    * handlerLogMessage - the message in the log file that is used to plot a spiking event (default 'FIRE!')
+    """
     if (type == "when"):
         
         with open(filename, 'r') as f:

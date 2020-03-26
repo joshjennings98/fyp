@@ -3,7 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000, title : str = "title", handlerLogMessage : str = "FIRE!") -> None:
+def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000, title : str = "title", handlerLogMessage : str = "FIRE!", tx : str = "clocked", ty : str = "epoch") -> None:
     """
     A simple function for plotting the output of epochsim outputs.
     To generate the log file when running epochsim add ' 2> filename' to the end of the epochsim command.
@@ -26,22 +26,41 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
 
         for line in lines:
             words = line.split(" ")
-            if words[0] == "Epoch":
-                if handlerLogMessage in line:
+            if handlerLogMessage in line:
+                if ty == "epoch":
+                    #if tx == "clocked":
                     idx = int(words[1][:-1])
                     if idx < numEpochs + 1:
                         n = ''.join(c for c in words[3] if c.isdigit())
                         if n != '':
                             ydata.append(int(n))
                             xdata.append(idx)
-        
+                    """
+                    elif tx == "gals":
+                        n = ''.join(c for c in words[3] if c.isdigit())
+                        ydata.append(int(n)) 
+                        xdata.append(words[-1])
+                    """
+                elif ty == "graph":
+                    if tx == "clocked":
+                        raise Exception("Clocked not yet supported")
+                    elif tx == "gals":
+                        ydata.append(int(''.join(c for c in words[0] if c.isdigit()))) 
+                        xdata.append(int(words[-1]))
+                
         fig, axis = plt.subplots(1, 1)
         fig.suptitle("Plot of which neurons are firing at each epoch")
         
         axis.scatter(xdata, ydata, s=1)
         axis.set_xlim(0, numEpochs)
         axis.set_ylim(0, numNeurons)
-        axis.set_xlabel("Epoch")
+        
+        if ty == "epoch":
+            epochOrTimestep = "Epoch"
+        elif ty == "graph":
+            epochOrTimestep = "Time Step"
+        
+        axis.set_xlabel(epochOrTimestep)
         axis.set_ylabel("Neuron")
         axis.set_title(title)
 
@@ -57,18 +76,35 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
 
         for line in lines:
             words = line.split(" ")
-            if words[0] == "Epoch":
-                if handlerLogMessage in line:
+            if handlerLogMessage in line:
+                if ty == "epoch":
+                    #if tx == "clocked":
                     idx = int(words[1][:-1])
-                    ydata[idx] += 1
+                    if idx < numEpochs + 1:
+                        ydata[idx] += 1
+                    """
+                    elif tx == "gals":
+                        ydata[int(words[-1])] += 1
+                    """
+                elif ty == "graph":
+                    if tx == "clocked":
+                        raise Exception("Clocked not yet supported")
+                    elif tx == "gals":
+                        ydata[int(words[-1])] += 1
         
         fig, axis = plt.subplots(1, 1)
         fig.suptitle("Plot of the number of neurons that fire at each epoch")
-        
+
         axis.plot(xdata, ydata)
         axis.set_xlim(0, numEpochs)
         axis.set_ylim(0, numNeurons)
-        axis.set_xlabel("Epoch")
+        
+        if ty == "epoch":
+            epochOrTimestep = "Epoch"
+        elif ty == "graph":
+            epochOrTimestep = "Time Step"
+        
+        axis.set_xlabel(epochOrTimestep)
         axis.set_ylabel("Neuron")
         axis.set_title(title)
 
@@ -77,7 +113,20 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
     else:
         raise Exception("Invalid plotting type. Please specify either 'when' for a graph of which neuron fires each epoch, or 'quantity' to print the quantity of neurons firing per epoch.")
 
-plotLogFile("log1.txt", "when", title="GraphSchema Clocked Izikevich")
-plotLogFile("log2.txt", "when", title="My Clocked Izikevich")
-plotLogFile("log1.txt", "quantity", title="GraphSchema Clocked Izikevich")
-plotLogFile("log2.txt", "quantity", title="My Clocked Izikevich")
+plotLogFile("log_clocked_epoch.txt", "when", title="GraphSchema Clocked Izikevich (epoch_sim)", numEpochs = 3000, numNeurons = 1000, tx="clocked", ty="epoch")
+plotLogFile("log_clocked_epoch.txt", "quantity", title="GraphSchema Clocked Izikevich (epoch_sim)", numEpochs = 3000, numNeurons = 1000, tx="clocked", ty="epoch")
+
+plotLogFile("log_clocked_epoch_josh.txt", "when", title="My Clocked Izikevich (epoch_sim)", numEpochs = 3000, numNeurons = 1000, tx="clocked", ty="epoch")
+plotLogFile("log_clocked_epoch_josh.txt", "quantity", title="My Clocked Izikevich (epoch_sim)", numEpochs = 3000, numNeurons = 1000, tx="clocked", ty="epoch")
+
+plotLogFile("log_gals_epoch.txt", "when", title="GraphSchema GALS Izikevich (epoch_sim)", numEpochs = 1000, numNeurons = 100, tx="gals", ty="epoch")
+plotLogFile("log_gals_epoch.txt", "quantity", title="GraphSchema GALS Izikevich (epoch_sim)", numEpochs = 1000, numNeurons = 100, tx="gals", ty="epoch")
+
+plotLogFile("log_gals_epoch_josh.txt", "when", title="My GALS Izikevich (epoch_sim)", numEpochs = 1000, numNeurons = 1000, tx="gals", ty="epoch")
+plotLogFile("log_gals_epoch_josh.txt", "quantity", title="My GALS Izikevich (epoch_sim)", numEpochs = 1000, numNeurons = 1000, tx="gals", ty="epoch")
+
+plotLogFile("log_gals_graph.txt", "when", title="GraphSchema GALS Izikevich (graph_sim)", numEpochs = 1000, numNeurons = 100, tx="gals", ty="graph")
+plotLogFile("log_gals_graph.txt", "quantity", title="GraphSchema GALS Izikevich (graph_sim)", numEpochs = 1000, numNeurons = 100, tx="gals", ty="graph")
+
+plotLogFile("log_gals_graph_josh.txt", "when", title="My GALS Izikevich (graph_sim)", numEpochs = 1000, numNeurons = 1000, tx="gals", ty="graph")
+plotLogFile("log_gals_graph_josh.txt", "quantity", title="My GALS Izikevich (graph_sim)", numEpochs = 1000, numNeurons = 1000, tx="gals", ty="graph")

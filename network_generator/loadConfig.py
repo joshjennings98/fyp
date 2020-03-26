@@ -63,7 +63,7 @@ def makeFromConfig(filename : str, printNetwork : bool = False) -> None:
     
     # Generate network
     neurons = genNeurons(int(parameters["number"][0]), allParams) 
-    network = Network(parameters["name"][0], parameters["equations"], parameters["threshold"][0], neurons, parameters["reset"], int(parameters["maxt"][0]))
+    network = Network(parameters["name"][0], parameters["equations"], parameters["threshold"][0], neurons, parameters["reset"], int(parameters["maxt"][0]), parameters["type"][0])
     
     if printNetwork:
         network.printGraph()

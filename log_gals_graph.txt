@@ -1,0 +1,516 @@
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/airfoil.graph.so'
+  registerGraphType(airfoil)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/pulsed_izhikevich.graph.so'
+  registerGraphType(pulsed_izhikevich)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/gals_izhikevich.graph.so'
+  registerGraphType(gals_izhikevich)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/apsp_vec_barrier.graph.so'
+  registerGraphType(apsp_vec_barrier)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/clocked_izhikevich.graph.so'
+  registerGraphType(clocked_izhikevich)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/apsp.graph.so'
+  registerGraphType(apsp)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/ising_spin.graph.so'
+  registerGraphType(ising_spin)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/firefly_sync.graph.so'
+  registerGraphType(firefly_sync)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/relaxation_heat_noterm.graph.so'
+  registerGraphType(relaxation_heat_noterm)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/test222.graph.so'
+  registerGraphType(test222)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/amg.graph.so'
+  registerGraphType(amg)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/gals_heat_float.graph.so'
+  registerGraphType(gals_heat_float)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/boop.graph.so'
+  registerGraphType(boop)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/betweeness_centrality.graph.so'
+  registerGraphType(betweeness_centrality)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/relaxation_heat.graph.so'
+  registerGraphType(relaxation_heat)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/gals_heat_fix.graph.so'
+  registerGraphType(gals_heat_fix)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/clock_tree.graph.so'
+  registerGraphType(clock_tree)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/ising_spin_fix.graph.so'
+  registerGraphType(ising_spin_fix)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/gals_heat_protocol_only.graph.so'
+  registerGraphType(gals_heat_protocol_only)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/storm.graph.so'
+  registerGraphType(storm)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/test_network.graph.so'
+  registerGraphType(test_network)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/clocked_izhikevich_fix.graph.so'
+  registerGraphType(clocked_izhikevich_fix)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/gals_heat.graph.so'
+  registerGraphType(gals_heat)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/gals_heat_fix_noedge.graph.so'
+  registerGraphType(gals_heat_fix_noedge)
+Parsing XML from '/home/josh/fyp/test.xml' ( = '/home/josh/fyp/test.xml' absolute)
+Parsed XML
+parent = 0x560ce52060f0
+  GraphType
+  GraphInstance
+a = 'false'
+Loading properties
+This client is using the old version of GraphLoadEvents::onEdgeInstance, and should be updated.Loaded
+Inited
+n_59 : FIRE! 7
+n_67 : FIRE! 8
+n_96 : FIRE! 9
+n_20 : FIRE! 15
+n_47 : FIRE! 19
+n_32 : FIRE! 22
+n_13 : FIRE! 22
+n_50 : FIRE! 25
+n_58 : FIRE! 26
+n_44 : FIRE! 27
+n_75 : FIRE! 28
+n_19 : FIRE! 28
+n_71 : FIRE! 29
+n_5 : FIRE! 30
+n_9 : FIRE! 37
+n_53 : FIRE! 37
+n_16 : FIRE! 38
+n_49 : FIRE! 40
+n_43 : FIRE! 40
+n_27 : FIRE! 40
+n_38 : FIRE! 44
+n_55 : FIRE! 46
+n_46 : FIRE! 49
+n_60 : FIRE! 50
+n_80 : FIRE! 52
+n_90 : FIRE! 57
+n_11 : FIRE! 59
+n_23 : FIRE! 59
+n_33 : FIRE! 62
+n_34 : FIRE! 64
+n_21 : FIRE! 66
+n_7 : FIRE! 68
+n_31 : FIRE! 68
+n_17 : FIRE! 72
+n_31 : FIRE! 72
+n_36 : FIRE! 81
+n_66 : FIRE! 84
+n_56 : FIRE! 86
+n_51 : FIRE! 86
+n_22 : FIRE! 88
+n_40 : FIRE! 92
+n_76 : FIRE! 93
+n_37 : FIRE! 97
+n_45 : FIRE! 99
+n_30 : FIRE! 102
+n_42 : FIRE! 104
+n_59 : FIRE! 109
+n_41 : FIRE! 110
+n_48 : FIRE! 113
+n_64 : FIRE! 113
+n_79 : FIRE! 114
+n_77 : FIRE! 114
+n_8 : FIRE! 115
+n_96 : FIRE! 117
+n_3 : FIRE! 120
+n_20 : FIRE! 121
+n_0 : FIRE! 121
+n_15 : FIRE! 121
+n_2 : FIRE! 123
+n_57 : FIRE! 124
+n_53 : FIRE! 125
+n_14 : FIRE! 125
+n_57 : FIRE! 128
+n_90 : FIRE! 129
+n_80 : FIRE! 129
+n_29 : FIRE! 129
+n_65 : FIRE! 135
+n_24 : FIRE! 135
+n_61 : FIRE! 139
+n_4 : FIRE! 140
+n_6 : FIRE! 145
+n_52 : FIRE! 146
+n_50 : FIRE! 148
+n_69 : FIRE! 149
+n_63 : FIRE! 149
+n_9 : FIRE! 150
+n_32 : FIRE! 159
+n_18 : FIRE! 163
+n_54 : FIRE! 166
+n_11 : FIRE! 167
+n_77 : FIRE! 167
+n_66 : FIRE! 168
+n_68 : FIRE! 170
+n_25 : FIRE! 172
+n_30 : FIRE! 173
+n_35 : FIRE! 174
+n_78 : FIRE! 174
+n_66 : FIRE! 175
+n_34 : FIRE! 176
+n_49 : FIRE! 177
+n_42 : FIRE! 187
+n_27 : FIRE! 188
+n_46 : FIRE! 192
+n_20 : FIRE! 195
+n_29 : FIRE! 200
+n_51 : FIRE! 206
+n_17 : FIRE! 210
+n_38 : FIRE! 212
+n_26 : FIRE! 217
+n_44 : FIRE! 217
+n_40 : FIRE! 217
+n_31 : FIRE! 218
+n_75 : FIRE! 225
+n_31 : FIRE! 225
+n_96 : FIRE! 232
+n_37 : FIRE! 232
+n_18 : FIRE! 233
+n_43 : FIRE! 246
+n_8 : FIRE! 247
+n_54 : FIRE! 248
+n_71 : FIRE! 249
+n_0 : FIRE! 251
+n_70 : FIRE! 257
+n_23 : FIRE! 258
+n_38 : FIRE! 258
+n_59 : FIRE! 260
+n_41 : FIRE! 261
+n_9 : FIRE! 261
+n_38 : FIRE! 262
+n_45 : FIRE! 264
+n_21 : FIRE! 265
+n_19 : FIRE! 267
+n_76 : FIRE! 269
+n_22 : FIRE! 269
+n_80 : FIRE! 269
+n_64 : FIRE! 275
+n_11 : FIRE! 279
+n_35 : FIRE! 279
+n_60 : FIRE! 281
+n_13 : FIRE! 284
+n_57 : FIRE! 288
+n_81 : FIRE! 288
+n_69 : FIRE! 292
+n_63 : FIRE! 294
+n_20 : FIRE! 295
+n_52 : FIRE! 295
+n_78 : FIRE! 295
+n_65 : FIRE! 297
+n_66 : FIRE! 301
+n_55 : FIRE! 305
+n_10 : FIRE! 305
+n_29 : FIRE! 305
+n_66 : FIRE! 307
+n_62 : FIRE! 308
+n_24 : FIRE! 308
+n_12 : FIRE! 309
+n_28 : FIRE! 309
+n_96 : FIRE! 311
+n_42 : FIRE! 312
+n_48 : FIRE! 313
+n_3 : FIRE! 313
+n_19 : FIRE! 313
+n_32 : FIRE! 321
+n_70 : FIRE! 321
+n_50 : FIRE! 323
+n_30 : FIRE! 324
+n_51 : FIRE! 328
+n_68 : FIRE! 331
+n_1 : FIRE! 331
+n_1 : FIRE! 335
+n_34 : FIRE! 342
+n_71 : FIRE! 342
+n_72 : FIRE! 343
+n_46 : FIRE! 347
+n_58 : FIRE! 347
+n_67 : FIRE! 348
+n_72 : FIRE! 350
+n_9 : FIRE! 352
+n_40 : FIRE! 357
+n_96 : FIRE! 361
+n_0 : FIRE! 364
+n_61 : FIRE! 364
+n_35 : FIRE! 365
+n_73 : FIRE! 365
+n_49 : FIRE! 375
+n_15 : FIRE! 378
+n_90 : FIRE! 381
+n_4 : FIRE! 381
+n_80 : FIRE! 381
+n_77 : FIRE! 383
+n_18 : FIRE! 384
+n_47 : FIRE! 388
+n_37 : FIRE! 390
+n_78 : FIRE! 391
+n_75 : FIRE! 392
+n_39 : FIRE! 395
+n_79 : FIRE! 397
+n_59 : FIRE! 397
+n_5 : FIRE! 397
+n_81 : FIRE! 398
+n_74 : FIRE! 401
+n_60 : FIRE! 402
+n_25 : FIRE! 407
+n_43 : FIRE! 407
+n_2 : FIRE! 411
+n_11 : FIRE! 414
+n_33 : FIRE! 417
+n_13 : FIRE! 421
+n_69 : FIRE! 423
+n_3 : FIRE! 424
+n_32 : FIRE! 430
+n_63 : FIRE! 440
+n_73 : FIRE! 440
+n_50 : FIRE! 441
+n_24 : FIRE! 443
+n_48 : FIRE! 447
+n_31 : FIRE! 451
+n_6 : FIRE! 453
+n_28 : FIRE! 454
+n_42 : FIRE! 456
+n_16 : FIRE! 459
+n_58 : FIRE! 467
+n_14 : FIRE! 467
+n_49 : FIRE! 470
+n_53 : FIRE! 470
+n_36 : FIRE! 472
+n_10 : FIRE! 475
+n_56 : FIRE! 479
+n_67 : FIRE! 481
+n_18 : FIRE! 481
+n_66 : FIRE! 482
+n_61 : FIRE! 484
+n_29 : FIRE! 486
+n_65 : FIRE! 488
+n_66 : FIRE! 488
+n_72 : FIRE! 490
+n_80 : FIRE! 491
+n_99 : FIRE! 491
+n_78 : FIRE! 491
+n_2 : FIRE! 495
+n_26 : FIRE! 504
+n_54 : FIRE! 504
+n_21 : FIRE! 504
+n_45 : FIRE! 506
+n_9 : FIRE! 506
+n_54 : FIRE! 509
+n_27 : FIRE! 510
+n_33 : FIRE! 511
+n_75 : FIRE! 512
+n_74 : FIRE! 517
+n_37 : FIRE! 518
+n_22 : FIRE! 520
+n_52 : FIRE! 521
+n_38 : FIRE! 523
+n_20 : FIRE! 524
+n_34 : FIRE! 524
+n_38 : FIRE! 528
+n_41 : FIRE! 531
+n_87 : FIRE! 532
+n_51 : FIRE! 532
+n_60 : FIRE! 536
+n_68 : FIRE! 540
+n_17 : FIRE! 540
+n_71 : FIRE! 540
+n_70 : FIRE! 540
+n_57 : FIRE! 543
+n_79 : FIRE! 545
+n_47 : FIRE! 548
+n_40 : FIRE! 549
+n_25 : FIRE! 552
+n_8 : FIRE! 553
+n_81 : FIRE! 553
+n_88 : FIRE! 554
+n_76 : FIRE! 564
+n_96 : FIRE! 564
+n_55 : FIRE! 565
+n_16 : FIRE! 570
+n_5 : FIRE! 570
+n_21 : FIRE! 575
+n_46 : FIRE! 582
+n_1 : FIRE! 585
+n_32 : FIRE! 587
+n_15 : FIRE! 588
+n_0 : FIRE! 591
+n_48 : FIRE! 591
+n_99 : FIRE! 594
+n_22 : FIRE! 602
+n_43 : FIRE! 602
+n_35 : FIRE! 602
+n_28 : FIRE! 608
+n_37 : FIRE! 608
+n_80 : FIRE! 609
+n_29 : FIRE! 609
+n_78 : FIRE! 615
+n_45 : FIRE! 621
+n_23 : FIRE! 623
+n_66 : FIRE! 629
+n_57 : FIRE! 632
+n_74 : FIRE! 633
+n_61 : FIRE! 633
+n_73 : FIRE! 637
+n_39 : FIRE! 641
+n_16 : FIRE! 646
+n_18 : FIRE! 648
+n_63 : FIRE! 650
+n_72 : FIRE! 652
+n_5 : FIRE! 653
+n_38 : FIRE! 654
+n_4 : FIRE! 655
+n_28 : FIRE! 656
+n_41 : FIRE! 659
+n_34 : FIRE! 659
+n_12 : FIRE! 661
+n_69 : FIRE! 663
+n_24 : FIRE! 665
+n_91 : FIRE! 666
+n_2 : FIRE! 666
+n_55 : FIRE! 671
+n_36 : FIRE! 676
+n_71 : FIRE! 681
+n_70 : FIRE! 685
+n_67 : FIRE! 687
+n_77 : FIRE! 687
+n_25 : FIRE! 688
+n_11 : FIRE! 692
+n_7 : FIRE! 692
+n_96 : FIRE! 695
+n_30 : FIRE! 696
+n_56 : FIRE! 697
+n_76 : FIRE! 698
+n_3 : FIRE! 702
+n_53 : FIRE! 703
+n_29 : FIRE! 706
+n_42 : FIRE! 707
+n_73 : FIRE! 710
+n_75 : FIRE! 711
+n_50 : FIRE! 711
+n_52 : FIRE! 713
+n_22 : FIRE! 716
+n_68 : FIRE! 716
+n_32 : FIRE! 720
+n_19 : FIRE! 720
+n_65 : FIRE! 722
+n_14 : FIRE! 725
+n_17 : FIRE! 727
+n_19 : FIRE! 727
+n_64 : FIRE! 728
+n_58 : FIRE! 732
+n_1 : FIRE! 733
+n_31 : FIRE! 736
+n_49 : FIRE! 746
+n_70 : FIRE! 747
+n_34 : FIRE! 748
+n_20 : FIRE! 753
+n_57 : FIRE! 753
+n_44 : FIRE! 754
+n_40 : FIRE! 757
+n_37 : FIRE! 757
+n_18 : FIRE! 758
+n_57 : FIRE! 759
+n_61 : FIRE! 760
+n_60 : FIRE! 762
+n_47 : FIRE! 763
+n_48 : FIRE! 764
+n_80 : FIRE! 764
+n_39 : FIRE! 770
+n_16 : FIRE! 777
+n_96 : FIRE! 779
+n_28 : FIRE! 793
+n_79 : FIRE! 796
+n_71 : FIRE! 796
+n_59 : FIRE! 798
+n_36 : FIRE! 805
+n_32 : FIRE! 806
+n_0 : FIRE! 810
+n_24 : FIRE! 810
+n_63 : FIRE! 811
+n_38 : FIRE! 813
+n_54 : FIRE! 817
+n_3 : FIRE! 820
+n_21 : FIRE! 822
+n_62 : FIRE! 822
+n_90 : FIRE! 824
+n_55 : FIRE! 824
+n_29 : FIRE! 824
+n_69 : FIRE! 827
+n_10 : FIRE! 827
+n_46 : FIRE! 829
+n_56 : FIRE! 829
+n_9 : FIRE! 835
+n_5 : FIRE! 838
+n_19 : FIRE! 843
+n_20 : FIRE! 844
+n_2 : FIRE! 844
+n_70 : FIRE! 844
+n_78 : FIRE! 845
+n_76 : FIRE! 846
+n_8 : FIRE! 849
+n_53 : FIRE! 849
+n_12 : FIRE! 853
+n_51 : FIRE! 857
+n_15 : FIRE! 862
+n_68 : FIRE! 863
+n_37 : FIRE! 863
+n_4 : FIRE! 864
+n_74 : FIRE! 864
+n_84 : FIRE! 869
+n_60 : FIRE! 873
+n_81 : FIRE! 873
+n_23 : FIRE! 883
+n_58 : FIRE! 885
+n_28 : FIRE! 885
+n_27 : FIRE! 886
+n_40 : FIRE! 889
+n_16 : FIRE! 890
+n_7 : FIRE! 891
+n_13 : FIRE! 893
+n_16 : FIRE! 895
+n_42 : FIRE! 896
+n_71 : FIRE! 899
+n_30 : FIRE! 899
+n_11 : FIRE! 900
+n_25 : FIRE! 900
+n_44 : FIRE! 909
+n_75 : FIRE! 912
+n_99 : FIRE! 912
+n_18 : FIRE! 913
+n_6 : FIRE! 913
+n_50 : FIRE! 913
+n_1 : FIRE! 914
+n_26 : FIRE! 920
+n_57 : FIRE! 920
+n_39 : FIRE! 924
+n_33 : FIRE! 927
+n_65 : FIRE! 928
+n_34 : FIRE! 928
+n_59 : FIRE! 929
+n_24 : FIRE! 930
+n_41 : FIRE! 934
+n_61 : FIRE! 937
+n_32 : FIRE! 943
+n_77 : FIRE! 943
+n_49 : FIRE! 946
+n_52 : FIRE! 946
+n_48 : FIRE! 948
+n_64 : FIRE! 948
+n_5 : FIRE! 953
+n_4 : FIRE! 954
+n_37 : FIRE! 954
+n_43 : FIRE! 955
+n_14 : FIRE! 955
+n_17 : FIRE! 959
+n_0 : FIRE! 960
+n_22 : FIRE! 962
+n_54 : FIRE! 964
+n_96 : FIRE! 966
+n_47 : FIRE! 971
+n_67 : FIRE! 973
+n_42 : FIRE! 975
+n_80 : FIRE! 980
+n_46 : FIRE! 981
+n_60 : FIRE! 981
+n_10 : FIRE! 984
+n_36 : FIRE! 990
+n_15 : FIRE! 990
+n_13 : FIRE! 994
+n_76 : FIRE! 998
+n_69 : _HANDLER_EXIT_SUCCESS_9be65737_
+Pseudo application exit, success.

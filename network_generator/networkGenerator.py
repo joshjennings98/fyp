@@ -77,6 +77,7 @@ class Network(object):
     * neurons -  a tuple containing a generator for the neuron properties (Neuron class) and connections (NeuronConnections class)
     * onReset - a set of assignments that happen when the threshold is met (format: state variable : operator : network property)
     * maxt - the maximum number of time steps
+    * graphType - the type of network: gals, clocked
     
     Initialise with Neuron(name, equations, threshold, neurons, onReset, maxt)
     
@@ -84,17 +85,18 @@ class Network(object):
     * makeGraph - function called on initialisation to generate a graph
     * printGraph - saves the graph to 'name.xml'. Called by the user
     """
-    def __init__(self, name : str, equations : List[str], threshold : str, neurons : Tuple[Generator[Neuron, None, None], Generator[NeuronConnections, None, None]], onReset : List[str], maxt : int) -> None:
+    def __init__(self, name : str, equations : List[str], threshold : str, neurons : Tuple[Generator[Neuron, None, None], Generator[NeuronConnections, None, None]], onReset : List[str], maxt : int, graphType : str) -> None:
         self.name = name
         self.equations = equations
         self.threshold = threshold
         self.neurons = neurons
         self.maxt = maxt
+        self.type = graphType
         self.onReset = list(map(lambda equ: OnReset(equ), onReset))
         self.filename = f"{self.name}.xml"
-        self.makeGraph(self.neurons, self.name, self.maxt, self.equations, self.threshold, self.onReset)
+        self.makeGraph(self.neurons, self.name, self.maxt, self.equations, self.threshold, self.onReset, self.type)
 
-    def makeGraph(self, neurons : Tuple[Generator[Neuron, None, None], Generator[NeuronConnections, None, None]], name : str, maxt : int, equations : List[str], threshold : str, onReset : List[str]) -> None:              
+    def makeGraph(self, neurons : Tuple[Generator[Neuron, None, None], Generator[NeuronConnections, None, None]], name : str, maxt : int, equations : List[str], threshold : str, onReset : List[str], graphType : str) -> None:              
         """
         Make a network graph based on the contructors parameters
         """
@@ -142,12 +144,20 @@ class Network(object):
             activateTimer1 = True
 
             # Generate skeleton XML
-            devices =  devicesGenClocked(properties, states, inits, assignments, equations, threshold, onReset)
-            graphStuff = graphGenClocked(name, devices, maxt)
+            if graphType == "clocked":
+                devices =  devicesGenClocked(properties, states, inits, assignments, equations, threshold, onReset)
+                graphStuff = graphGenClocked(name, devices, maxt)
+            elif graphType == "gals":
+                devices =  devicesGenGALS(properties, states, inits, assignments, equations, threshold, onReset)
+                graphStuff = graphGenGALS(name, devices, maxt)
+            else:
+                raise Exception(f"{graphType} is an invalid graph type.")
             
             f.writelines(graphStuff)
             f.write("\n\t\t<DeviceInstances>\t\t")
-            f.write(f"\n\t\t\t<DevI id=\"clock\" type=\"clock\"><P>\"neuronCount\":{numNeurons}</P></DevI>\n")
+
+            if graphType == "clocked":
+                f.write(f"\n\t\t\t<DevI id=\"clock\" type=\"clock\"><P>\"neuronCount\":{numNeurons}</P></DevI>\n")
 
             print("Generating devices.")
 
@@ -159,9 +169,9 @@ class Network(object):
 
             f.write("\t\t</DeviceInstances>\n\t\t<EdgeInstances>\n")
 
-            # Clocked version TODO: Add options for Clocked and gals
-            for i in range(numNeurons):
-                f.write(f"\t\t\t<EdgeI path=\"n_{i}:tick-clock:tick\" />\n\t\t\t<EdgeI path=\"clock:tock-n_{i}:tock\" />\n")
+            if graphType == "clocked":
+                for i in range(numNeurons):
+                    f.write(f"\t\t\t<EdgeI path=\"n_{i}:tick-clock:tick\" />\n\t\t\t<EdgeI path=\"clock:tock-n_{i}:tock\" />\n")
             
             count = 0
             countEdges = 0

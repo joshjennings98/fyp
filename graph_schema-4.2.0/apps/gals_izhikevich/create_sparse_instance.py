@@ -17,7 +17,7 @@ src=sys.argv[1]
 Ne=80
 Ni=20
 K=20
-max_t=1000
+max_t=100
 
 if len(sys.argv)>2:
     Ne=int(sys.argv[2])
@@ -54,7 +54,7 @@ for i in range(N):
         c=-65
         d=2
     props={
-        "a":a, "b":b, "c":c, "d":d, "fanin":K
+        "a":a, "b":b, "c":c, "d":d, "seed":random.randint(0,9999999), "fanin":K
     }
     nodes[i]=DeviceInstance(res, "n_{}".format(i), neuronType, props)
     res.add_device_instance(nodes[i])

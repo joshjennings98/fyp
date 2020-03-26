@@ -16,10 +16,13 @@ mv clocked_izhikevich.graph.so graph_schema-4.2.0/providers
 cd graph_schema-4.2.0
 
 # Run epoch_sim
-bin/epoch_sim /home/josh/fyp/test_clock2.xml 2> ../log1.txt
+bin/epoch_sim /home/josh/fyp/test_clock2.xml 2> ../log_clocked_epoch.txt
+
+# Run graph_sim
+bin/graph_sim /home/josh/fyp/test_clock2.xml 2> ../log_clocked_graph.txt
 
 # Go back to the main directory
 cd ..
 
-python3 visualisation.py
+#python3 visualisation.py
 

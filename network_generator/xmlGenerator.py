@@ -1,7 +1,7 @@
 # xmlGenerator.py
 from typing import List
 
-def devicesGen(properties : str, states : str, inits : str, assignments : str, equations : str, threshold : str, onReset : str) -> str:
+def devicesGenGALS(properties : str, states : str, inits : str, assignments : str, equations : str, threshold : str, onReset : str) -> str:
     """
     Generate the XML for the devices.
     
@@ -66,6 +66,7 @@ def devicesGen(properties : str, states : str, inits : str, assignments : str, e
 \t\t\t\t\t\t}}\n
 \t\t\t\t\t\tmessage->fired = {threshold};
 \t\t\t\t\t\tif(message->fired){{
+\t\t\t\t\t\t\thandler_log(1, "FIRE! %i", deviceState->t);
 \t\t\t\t\t\t\tdeviceState->finishRefractory = deviceState->t + deviceProperties->refractory;
 \t\t{onReset}
 \t\t\t\t\t\t}}\n
@@ -87,7 +88,7 @@ def devicesGen(properties : str, states : str, inits : str, assignments : str, e
 \t\t\t\t</ReadyToSend> 
 \t\t\t</DeviceType>"""
 
-def graphGen(name : str, devices : str, maxt: int) -> str:
+def graphGenGALS(name : str, devices : str, maxt: int) -> str:
     """
     Generate the XML for the entire graph, takes the devices and edges and attaches everyting together.
 

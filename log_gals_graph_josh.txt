@@ -1,0 +1,57 @@
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/airfoil.graph.so'
+  registerGraphType(airfoil)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/pulsed_izhikevich.graph.so'
+  registerGraphType(pulsed_izhikevich)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/apsp_vec_barrier.graph.so'
+  registerGraphType(apsp_vec_barrier)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/clocked_izhikevich.graph.so'
+  registerGraphType(clocked_izhikevich)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/apsp.graph.so'
+  registerGraphType(apsp)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/ising_spin.graph.so'
+  registerGraphType(ising_spin)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/firefly_sync.graph.so'
+  registerGraphType(firefly_sync)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/relaxation_heat_noterm.graph.so'
+  registerGraphType(relaxation_heat_noterm)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/test222.graph.so'
+  registerGraphType(test222)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/amg.graph.so'
+  registerGraphType(amg)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/gals_heat_float.graph.so'
+  registerGraphType(gals_heat_float)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/boop.graph.so'
+  registerGraphType(boop)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/betweeness_centrality.graph.so'
+  registerGraphType(betweeness_centrality)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/relaxation_heat.graph.so'
+  registerGraphType(relaxation_heat)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/gals_heat_fix.graph.so'
+  registerGraphType(gals_heat_fix)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/clock_tree.graph.so'
+  registerGraphType(clock_tree)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/ising_spin_fix.graph.so'
+  registerGraphType(ising_spin_fix)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/gals_heat_protocol_only.graph.so'
+  registerGraphType(gals_heat_protocol_only)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/storm.graph.so'
+  registerGraphType(storm)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/test_network.graph.so'
+  registerGraphType(test_network)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/clocked_izhikevich_fix.graph.so'
+  registerGraphType(clocked_izhikevich_fix)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/gals_heat.graph.so'
+  registerGraphType(gals_heat)
+Loading provider '/home/josh/fyp/graph_schema-4.2.0/providers/gals_heat_fix_noedge.graph.so'
+  registerGraphType(gals_heat_fix_noedge)
+Parsing XML from '/home/josh/fyp/test_network.xml' ( = '/home/josh/fyp/test_network.xml' absolute)
+Parsed XML
+parent = 0x561a0e145050
+  GraphType
+  GraphInstance
+ Empty
+Loading properties
+This client is using the old version of GraphLoadEvents::onEdgeInstance, and should be updated.Loaded
+Inited
+n_201 : _HANDLER_EXIT_SUCCESS_9be65737_
+Pseudo application exit, success.

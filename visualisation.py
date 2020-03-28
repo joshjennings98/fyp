@@ -113,6 +113,7 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
     else:
         raise Exception("Invalid plotting type. Please specify either 'when' for a graph of which neuron fires each epoch, or 'quantity' to print the quantity of neurons firing per epoch.")
 
+"""
 plotLogFile("log_clocked_epoch.txt", "when", title="GraphSchema Clocked Izikevich (epoch_sim)", numEpochs = 3000, numNeurons = 1000, tx="clocked", ty="epoch")
 plotLogFile("log_clocked_epoch.txt", "quantity", title="GraphSchema Clocked Izikevich (epoch_sim)", numEpochs = 3000, numNeurons = 1000, tx="clocked", ty="epoch")
 
@@ -130,3 +131,8 @@ plotLogFile("log_gals_graph.txt", "quantity", title="GraphSchema GALS Izikevich 
 
 plotLogFile("log_gals_graph_josh.txt", "when", title="My GALS Izikevich (graph_sim)", numEpochs = 1000, numNeurons = 1000, tx="gals", ty="graph")
 plotLogFile("log_gals_graph_josh.txt", "quantity", title="My GALS Izikevich (graph_sim)", numEpochs = 1000, numNeurons = 1000, tx="gals", ty="graph")
+"""
+
+plotLogFile("log2.txt", "quantity", title="My Clocked Fully Connected (epoch_sim)", numEpochs = 6000, numNeurons = 1000, tx="clocked", ty="epoch")
+plotLogFile("log2.txt", "when", title="My Clocked Fully Conencted (epoch_sim)", numEpochs = 6000, numNeurons = 1000, tx="clocked", ty="epoch")
+

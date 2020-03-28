@@ -29,14 +29,14 @@ cd graph_schema-4.2.0
 rm ../log.txt
 
 # Run epoch_sim
-bin/epoch_sim /home/josh/fyp/$1.xml 2> ../log_clocked_epoch_josh.txt
+bin/epoch_sim /home/josh/fyp/$1.xml 2> ../log2.txt
 
 # Run graph_sim
-bin/graph_sim /home/josh/fyp/$1.xml 2> ../log_clocked_graph_josh.txt
+# bin/graph_sim /home/josh/fyp/$1.xml 2> ../log_clocked_graph_josh.txt
 
 # Go back to the main directory
 cd ..
 
-# python3 visualisation.py
+python3 visualisation.py
 
 

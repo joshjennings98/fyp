@@ -157,6 +157,9 @@ class Network(object):
                     graphStuff = graphGenGALS(name, devices, maxt)
                 except:
                     raise Exception(f"{graphType} is an invalid relaxed graph type. {relaxationValue} is not a int, this value neds to be the number of fanin values to ignore.")
+            elif graphType == "none":
+                devices =  devicesGenNone(properties, states, inits, assignments, equations, threshold, onReset)
+                graphStuff = graphGenNone(name, devices, maxt)
             else:
                 raise Exception(f"{graphType} is an invalid graph type.")
             

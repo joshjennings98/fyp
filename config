@@ -33,10 +33,10 @@ refractory = 0,
 connectionProb = 0.2;
 
 number:
-100;
+1000;
 
 maxt:
 100;
 
 type:
-relaxed_gals = 6
+none

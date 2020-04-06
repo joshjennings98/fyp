@@ -26,13 +26,8 @@ mv $1.graph.so graph_schema-4.2.0/providers
 # CD into graph_schema thing because I can't do it directly
 cd graph_schema-4.2.0
 
-rm ../log.txt
-
 # Run epoch_sim
 bin/epoch_sim /home/josh/fyp/$1.xml 2> ../log2.txt
-
-# Run graph_sim
-# bin/graph_sim /home/josh/fyp/$1.xml 2> ../log_clocked_graph_josh.txt
 
 # Go back to the main directory
 cd ..

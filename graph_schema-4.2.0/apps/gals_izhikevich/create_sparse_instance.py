@@ -11,14 +11,17 @@ import random
 
 urand=random.random
 
-src=sys.argv[1]
-(graphTypes,graphInstances)=load_graph_types_and_instances(src, "<stdin>")
+appBase=os.path.dirname(os.path.realpath(__file__))
+
+src=appBase+"/gals_izhikevich_graph_type.xml"
+(graphTypes,graphInstances)=load_graph_types_and_instances(src,src)
 
 Ne=80
 Ni=20
 K=20
 max_t=100
 
+"""
 if len(sys.argv)>2:
     Ne=int(sys.argv[2])
 if len(sys.argv)>3:
@@ -27,6 +30,7 @@ if len(sys.argv)>4:
     K=int(sys.argv[4])
 if len(sys.argv)>5:
     max_t=int(sys.argv[5])
+"""
 
 N=Ne+Ni
 K=min(N,K)
@@ -73,4 +77,5 @@ for dst in range(N):
         res.add_edge_instance(ei)
 
 
-save_graph(res,sys.stdout)
+sys.stderr.write("Saving graph\n")
+save_graph(res,"test_gals.xml")

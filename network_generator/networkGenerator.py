@@ -150,6 +150,13 @@ class Network(object):
             elif graphType == "gals":
                 devices =  devicesGenGALS(properties, states, inits, assignments, equations, threshold, onReset)
                 graphStuff = graphGenGALS(name, devices, maxt)
+            elif graphType.replace(" ", "").split("=")[0] == "relaxed_gals":
+                try: 
+                    relaxationValue = int(graphType.replace(" ", "").split("=")[1])
+                    devices =  devicesGenGALS(properties, states, inits, assignments, equations, threshold, onReset, relaxationValue)
+                    graphStuff = graphGenGALS(name, devices, maxt)
+                except:
+                    raise Exception(f"{graphType} is an invalid relaxed graph type. {relaxationValue} is not a int, this value neds to be the number of fanin values to ignore.")
             else:
                 raise Exception(f"{graphType} is an invalid graph type.")
             
@@ -163,7 +170,7 @@ class Network(object):
 
             for neuron in neurons:
                 neuronProps = ','.join(list(map(lambda prop : f"\"{prop.name}\":{prop.value if (prop.propState != 'sr') else round(float(prop.value) * 0.001 * random.randrange(800, 1000, 1), 3)}", neuron.props)))
-                device = f"\t\t\t<DevI id=\"{neuron.name}\" type=\"neuron\"><P>{neuronProps},\"refractory\":{neuron.refractory}</P></DevI>\n"
+                device = f"\t\t\t<DevI id=\"{neuron.name}\" type=\"neuron\"><P>{neuronProps},\"refractory\":{neuron.refractory},\"seed\":{random.randint(0,3079424395)}</P></DevI>\n"
                 f.write(device)
                 count += 1     
 

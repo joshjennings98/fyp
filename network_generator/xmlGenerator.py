@@ -1,7 +1,7 @@
 # xmlGenerator.py
 from typing import List
 
-def devicesGenGALS(properties : str, states : str, inits : str, assignments : str, equations : str, threshold : str, onReset : str) -> str:
+def devicesGenGALS(properties : str, states : str, inits : str, assignments : str, equations : str, threshold : str, onReset : str, relaxed : int = 0) -> str:
     """
     Generate the XML for the devices.
     
@@ -48,7 +48,7 @@ def devicesGenGALS(properties : str, states : str, inits : str, assignments : st
 \t\t\t\t\t\tif(message->fired){{
 \t\t\t\t\t\t\tdeviceState->I += edgeProperties->weight; // fire at 1, (1 * weight) = weight so just add weight
 \t\t\t\t\t\t}}\n
-\t\t\t\t\t\tif(deviceState->Icount == deviceProperties->fanin){{
+\t\t\t\t\t\tif(deviceState->Icount >= deviceProperties->fanin-{relaxed}){{
 \t\t\t\t\t\t\tdeviceState->pendingFires++;
 \t\t\t\t\t\t\tdeviceState->Icount=0;
 \t\t\t\t\t\t}}

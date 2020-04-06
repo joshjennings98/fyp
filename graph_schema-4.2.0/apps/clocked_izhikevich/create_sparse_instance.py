@@ -84,4 +84,4 @@ for dst in range(N):
         res.add_edge_instance(ei)
 
 sys.stderr.write("Saving graph\n")
-save_graph(res,"test_clock2.xml")
+save_graph(res,"test_clock.xml")

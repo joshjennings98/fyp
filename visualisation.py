@@ -133,6 +133,6 @@ plotLogFile("log_gals_graph_josh.txt", "when", title="My GALS Izikevich (graph_s
 plotLogFile("log_gals_graph_josh.txt", "quantity", title="My GALS Izikevich (graph_sim)", numEpochs = 1000, numNeurons = 1000, tx="gals", ty="graph")
 """
 
-plotLogFile("log2.txt", "quantity", title="My Clocked Fully Connected (epoch_sim)", numEpochs = 6000, numNeurons = 1000, tx="clocked", ty="epoch")
-plotLogFile("log2.txt", "when", title="My Clocked Fully Conencted (epoch_sim)", numEpochs = 6000, numNeurons = 1000, tx="clocked", ty="epoch")
+plotLogFile("log2.txt", "quantity", title="My Clocked Fully Connected (epoch_sim)", numEpochs = 1000, numNeurons = 100, tx="clocked", ty="epoch")
+plotLogFile("log2.txt", "when", title="My Clocked Fully Conencted (epoch_sim)", numEpochs = 1000, numNeurons = 100, tx="clocked", ty="epoch")
 

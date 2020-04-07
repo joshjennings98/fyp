@@ -214,10 +214,18 @@ def devicesGenClocked(properties : str, states : str, inits : str, assignments :
 \t\t\t\t\t\t<![CDATA[
 \t\t\t{assignments}
 \t\t\t\t\t\tfloat &I=deviceState->I;\n
-\t\t\t{equations}\n
+\t\t\t\t\t\tif (deviceState->finishRefractory <= 0) {{
+\t\t\t{equations}
+\t\t\t\t\t\t}} else {{
+\t\t\t\t\t\t\t//handler_log(1, "refractory=%d", deviceState->finishRefractory);
+\t\t\t\t\t\t}}\n
+\t\t\t\t\t\tif (deviceState->finishRefractory > 0) {{
+\t\t\t\t\t\t\tdeviceState->finishRefractory -= 1;
+\t\t\t\t\t\t}} 
 \t\t\t\t\t\tdeviceState->fireValue = {threshold};
 \t\t\t\t\t\tif(deviceState->fireValue){{
 \t\t\t\t\t\t\thandler_log(1, "FIRE!");
+\t\t\t\t\t\t\tdeviceState->finishRefractory = deviceProperties->refractory;
 \t\t{onReset}
 \t\t\t\t\t\t}}\n
 \t\t\t\t\t\tdeviceState->I=deviceProperties->Ir * grng(deviceState->rng);

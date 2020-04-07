@@ -27,11 +27,12 @@ mv $1.graph.so graph_schema-4.2.0/providers
 cd graph_schema-4.2.0
 
 # Run epoch_sim
+#bin/epoch_sim /home/josh/fyp/$1.xml > ../log2.txt
 bin/epoch_sim /home/josh/fyp/$1.xml 2> ../log2.txt
 
 # Go back to the main directory
 cd ..
 
-python3 visualisation.py
+python3 visualisation.py log2.txt when 1000 100 clocked epoch
 
 

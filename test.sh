@@ -20,5 +20,5 @@ bin/epoch_sim /home/josh/fyp/test_gals.xml 2> ../log2.txt
 # Go back to the main directory
 cd ..
 
-python3 visualisation.py
+python3 visualisation.py log2.txt when 2000 100 gals epoch
 

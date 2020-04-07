@@ -43,8 +43,9 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
                         ydata.append(int(''.join(c for c in words[0] if c.isdigit()))) 
                         xdata.append(curClock)
                 elif tx == "gals":
-                    ydata.append(int(''.join(c for c in words[0] if c.isdigit()))) 
-                    xdata.append(int(words[-1]))
+                    if handlerLogMessage in line:
+                        ydata.append(int(''.join(c for c in words[0] if c.isdigit()))) 
+                        xdata.append(int(words[-1]))
                 
         fig, axis = plt.subplots(1, 1)
         fig.suptitle("Plot of which neurons are firing at each epoch")

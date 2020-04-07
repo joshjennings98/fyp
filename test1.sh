@@ -33,6 +33,6 @@ bin/epoch_sim /home/josh/fyp/$1.xml 2> ../log2.txt
 # Go back to the main directory
 cd ..
 
-python3 visualisation.py log2.txt when 1000 100 clocked epoch
+python3 visualisation.py log2.txt when 100 100 gals epoch
 
 

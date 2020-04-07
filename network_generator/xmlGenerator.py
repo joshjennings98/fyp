@@ -530,6 +530,7 @@ def devicesGenExtreme(properties : str, states : str, inits : str, assignments :
 \t\t\t\t\t<Scalar name="I" type="float"/> 
 \t\t\t\t\t<Scalar name="t_most_recent" type="uint32_t"/> 
 \t\t\t\t\t<Scalar name="t_current_max" type="uint32_t"/> 
+\t\t\t\t\t<Scalar name="fireSpike" type="uint32_t"/> 
 \t\t{states}
 \t\t\t\t</State> 
 \t\t\t\t<OnInit>
@@ -542,7 +543,8 @@ def devicesGenExtreme(properties : str, states : str, inits : str, assignments :
 \t\t\t\t\tdeviceState->finishRefractory=0;
 \t\t\t\t\tdeviceState->t_most_recent=0;
 \t\t\t\t\tdeviceState->t_current_max=0;
-\t\t\t\t\tdeviceState->rts = RTS_FLAG_fire;		   
+\t\t\t\t\tdeviceState->rts = RTS_FLAG_fire;	
+\t\t\t\t\tdeviceState->fireSpike = true;		   
 \t\t\t\t\t]]>
 \t\t\t\t</OnInit> 
 \t\t\t\t<InputPin name="input" messageTypeId="synapse"> 
@@ -555,6 +557,7 @@ def devicesGenExtreme(properties : str, states : str, inits : str, assignments :
 \t\t\t\t\t\t\tif(deviceState->t_current_max < message->fired){{
 \t\t\t\t\t\t\t\tdeviceState->t_most_recent=message->fired;
 \t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\tdeviceState->pendingFires++;
 \t\t\t\t\t\t]]>
 \t\t\t\t\t</OnReceive> 
 \t\t\t\t</InputPin> 
@@ -564,26 +567,32 @@ def devicesGenExtreme(properties : str, states : str, inits : str, assignments :
 \t\t\t\t\t\t// Assignments
 \t\t{assignments}
 \t\t\t\t\t\tfloat &I = deviceState->I; // Assign I\n
+\t\t\t\t\t\tdeviceState->fireSpike = false;
 \t\t\t\t\t\t//handler_log(1, "time diff=%d", deviceState->t_most_recent - deviceState->t_current_max);
 \t\t\t\t\t\tif((deviceState->t_most_recent > deviceState->t_current_max)){{ 
 \t\t\t\t\t\t\t\tint diff = deviceState->t_most_recent - deviceState->t_current_max;
+\t\t\t\t\t\t\t\thandler_log(1, "diff=%d", diff);
 \t\t\t\t\t\t\t\tfor (int i = 0; i < diff; i++) {{
-\t\t\t\t{equations}
-handler_log(1, "v=%f, u=%f", deviceState->v, deviceState->u);
+\t\t\t\t\t\t\t\t\tif (deviceState->finishRefractory <= 0) {{
+\t\t\t\t\t\t\t\t\t\t//handler_log(1, "v = %f, I = %f", deviceState->v, deviceState->I);
+\t\t\t\t\t{equations}
+\t\t\t\t\t\t\t\tif({threshold}){{ i = diff; }}
+\t\t\t\t\t\t\t\t\t}} else {{
+\t\t\t\t\t\t\t\t\tdeviceState->finishRefractory -= 1;
+\t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t}}
-deviceState->t_current_max = deviceState->t_most_recent;
+\t\t\t\t\t\t\t\tdeviceState->t_current_max = deviceState->t_most_recent;
 \t\t\t\t\t\t}}
 \t\t\t\t\t\tif({threshold}){{
-\t\t\t\t\t\t\tdeviceState->pendingFires = 1;
 \t\t\t\t\t\t\thandler_log(1, "FIRE! %i", deviceState->t);
+\t\t\t\t\t\t\tdeviceState->fireSpike = true;
 \t\t\t\t\t\t\tdeviceState->finishRefractory = deviceState->t + deviceProperties->refractory;
 \t\t{onReset}
 \t\t\t\t\t\t}}
-\t\t\t\t\t\telse {{
-\t\t\t\t\t\t\tdeviceState->pendingFires = 0;
-\t\t\t\t\t\t}}
+\t\t\t\t\t\thandler_log(1, "firespike = %i", deviceState->fireSpike);
 \t\t\t\t\t\tmessage->fired = deviceState->t_current_max + 1;
 \t\t\t\t\t\tdeviceState->I=deviceProperties->Ir * grng(deviceState->rng);
+\t\t\t\t\t\tdeviceState->pendingFires--;
 \t\t\t\t\t\tdeviceState->t++;\n
 \t\t\t\t\t\tif(deviceState->t > graphProperties->max_t && graphProperties->max_t != 0){{
 \t\t\t\t\t\t\t*doSend=0;
@@ -594,7 +603,7 @@ deviceState->t_current_max = deviceState->t_most_recent;
 \t\t\t\t</OutputPin> 
 \t\t\t\t<ReadyToSend>
 \t\t\t\t\t<![CDATA[ 
-\t\t\t\t\t*readyToSend = (deviceState->pendingFires > 0) ? RTS_FLAG_fire : 0;
+\t\t\t\t\t*readyToSend = (deviceState->pendingFires > 0) ? deviceState->fireSpike : 0;
 \t\t\t\t\t]]>
 \t\t\t\t</ReadyToSend> 
 \t\t\t</DeviceType>"""

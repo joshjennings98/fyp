@@ -176,7 +176,7 @@ class Network(object):
 
             for neuron in neurons:
                 neuronProps = ','.join(list(map(lambda prop : f"\"{prop.name}\":{prop.value if (prop.propState != 'sr') else round(float(prop.value) * 0.001 * random.randrange(800, 1000, 1), 3)}", neuron.props)))
-                device = f"\t\t\t<DevI id=\"{neuron.name}\" type=\"neuron\"><P>{neuronProps},\"refractory\":{neuron.refractory},\"seed\":{random.randint(0,3079424395)}</P></DevI>\n"
+                device = f"\t\t\t<DevI id=\"{neuron.name}\" type=\"neuron\"><P>{neuronProps},\"refractory\":{neuron.refractory},\"seed\":{random.randint(0,4294967295)}</P></DevI>\n"
                 f.write(device)
                 count += 1     
 

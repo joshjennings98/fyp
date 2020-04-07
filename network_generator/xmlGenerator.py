@@ -221,6 +221,7 @@ def devicesGenClocked(properties : str, states : str, inits : str, assignments :
 \t\t{onReset}
 \t\t\t\t\t\t}}\n
 \t\t\t\t\t\tdeviceState->I=deviceProperties->Ir * grng(deviceState->rng);
+\t\t\t\t\t\t//handler_log(1, "rand=%f", deviceState->I/deviceProperties->Ir);
 \t\t\t\t\t\tdeviceState->Icount=0;
 \t\t\t\t\t\tdeviceState->sentSpike=false;
 \t\t\t\t\t\tdeviceState->waitTick=true;
@@ -271,6 +272,7 @@ def devicesGenClocked(properties : str, states : str, inits : str, assignments :
 \t\t\t\t\t\t<![CDATA[
 \t\t\t\t\t\t\tdeviceState->waitCount=deviceProperties->neuronCount;
 \t\t\t\t\t\t\tdeviceState->t++;
+\t\t\t\t\t\t\thandler_log(1, "time = %d", deviceState->t);
 \t\t\t\t\t\t\tif(deviceState->t > graphProperties->max_t){{
 \t\t\t\t\t\t\t\t*doSend=false;
 \t\t\t\t\t\t\t\tfake_handler_exit(0);
@@ -331,7 +333,8 @@ def graphGenClocked(name : str, devices : str, maxt: int) -> str:
 \t\t\t\t\t// a four-bit uniform has mean 7.5 and variance ((15-0+1)^2-1)/12 = 85/4
 \t\t\t\t\t// sum of four uniforms has mean 8*7.5=60 and variance of 8*85/4=170
 \t\t\t\t\tconst float scale=0.07669649888473704; // == 1/sqrt(170)
-\t\t\t\t\treturn (acc-60.0f) * scale;
+\t\t\t\t\tfloat f = (acc-60.0f) * scale;
+\t\t\t\t\treturn f; // >= 0 ? f : -1.0 * f;
 \t\t\t\t}}\n
 \t\t\t]]>
 \t\t</SharedCode>

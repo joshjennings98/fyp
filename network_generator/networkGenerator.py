@@ -163,6 +163,9 @@ class Network(object):
             elif graphType == "none":
                 devices =  devicesGenNone(properties, states, inits, assignments, equations, threshold, onReset)
                 graphStuff = graphGenNone(name, devices, maxt)
+            elif graphType == "barrier":
+                devices =  devicesGenBarrier(properties, states, inits, assignments, equations, threshold, onReset)
+                graphStuff = graphGenBarrier(name, devices, maxt)
             else:
                 raise Exception(f"{graphType} is an invalid graph type.")
             

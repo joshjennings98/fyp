@@ -28,8 +28,12 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
         for line in lines:
             words = line.split(" ") 
             if ty == "epoch":
-                if handlerLogMessage in line:
-                    #print(words)
+                if tx == "barrier":
+                    if handlerLogMessage in line:
+                        ydata.append(int(''.join(c for c in words[2] if c.isdigit()))) 
+                        xdata.append(int(words[-1]))
+                elif handlerLogMessage in line:
+                    print(words)
                     idx = int(words[1][:-1])
                     if idx < numEpochs + 1:
                         n = ''.join(c for c in words[3] if c.isdigit())
@@ -49,7 +53,7 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
                         xdata.append(int(words[-1]))
                 elif tx == "barrier":
                     if handlerLogMessage in line:
-                        ydata.append(int(''.join(c for c in words[2] if c.isdigit()))) 
+                        ydata.append(int(''.join(c for c in words[0] if c.isdigit()))) 
                         xdata.append(int(words[-1]))
                 
         fig, axis = plt.subplots(1, 1)
@@ -84,9 +88,12 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
             words = line.split(" ") 
             if handlerLogMessage in line:
                 if ty == "epoch":
-                    idx = int(words[1][:-1])
-                    if idx < numEpochs + 1:
-                        ydata[idx] += 1
+                    if tx == "barrier":
+                        ydata[int(words[-1]) - 1] += 1
+                    else:
+                        idx = int(words[1][:-1])
+                        if idx < numEpochs + 1:
+                            ydata[idx] += 1
                 elif ty == "graph":
                     if tx == "clocked":
                         if "time" in line:

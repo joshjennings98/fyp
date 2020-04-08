@@ -17,7 +17,7 @@ a = 0.02,
 b = 0.2,
 v = -65r,
 u = 2r,
-property fanin = 20,
+property fanin = 200,
 fraction = 0.8,
 refractory = 0,
 connectionProb = 0.2;
@@ -27,16 +27,16 @@ a = 0.1r,
 b = 0.2r,
 v = -65,
 u = 2,
-property fanin = 20,
+property fanin = 200,
 fraction = 0.2,
 refractory = 0,
 connectionProb = 0.2;
 
 number:
-100;
+1000;
 
 maxt:
 1000;
 
 type:
-extreme
+barrier

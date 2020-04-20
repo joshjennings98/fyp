@@ -108,7 +108,7 @@ class Network(object):
                 print(f"Generated {int(count / numNeurons * 100)}% of devices ({count}).")
                 time.sleep(1)
         
-        def printEdges() -> None:
+        def printEdges(graphType="") -> None:
             """
             Print the percentage of edges generated
             """
@@ -148,6 +148,9 @@ class Network(object):
                 devices =  devicesGenClocked(properties, states, inits, assignments, equations, threshold, onReset)
                 graphStuff = graphGenClocked(name, devices, maxt)
             elif graphType == "gals":
+                devices =  devicesGenGALS(properties, states, inits, assignments, equations, threshold, onReset)
+                graphStuff = graphGenGALS(name, devices, maxt)
+            elif graphType == "gals_bi":
                 devices =  devicesGenGALS(properties, states, inits, assignments, equations, threshold, onReset)
                 graphStuff = graphGenGALS(name, devices, maxt)
             elif graphType.replace(" ", "").split("=")[0] == "relaxed_gals":
@@ -196,6 +199,7 @@ class Network(object):
             print("Generated all devices.")
             print("Generating edges.")
 
+            connectionsTracker = {}
             for neuron in neuronConnections:
                 connections = []
                 for idx, connection in enumerate(neuron.connections): 
@@ -204,7 +208,20 @@ class Network(object):
                         weight = -rand() if rand() > 0.8 else 0.5 * rand() # TODO: change to better random values
                         edge = f"\t\t\t<EdgeI path=\"{neuron.name}:input-n_{idx}:fire\"><P>\"weight\":{weight}</P></EdgeI>\n"
                         connections.append(edge)
+                        connectionsTracker[(f"{neuron.name}", f"n_{idx}")] = 1
                 count += 1
+                f.write("".join(connections))
+
+            activateTimer2 = False
+
+            if graphType == "gals_bi":
+                print("Generating reverse edges.")
+                connections = []
+                for c in connectionsTracker:
+                    if (c[1], c[0]) not in connectionsTracker:
+                        edge = f"\t\t\t<EdgeI path=\"{c[1]}:input-{c[0]}:fire\"><P>\"weight\":0.0</P></EdgeI>\n"
+                        connections.append(edge)
+                    countEdges += 1
                 f.write("".join(connections))
                 
             print("Generated all edges.")

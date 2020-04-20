@@ -34,6 +34,6 @@ bin/epoch_sim /home/josh/fyp/$1.xml 2> ../log2.txt
 cd ..
 
 # MAKE SURE YOU CALL WITH THE CORRECT STUFF
-python3 visualisation.py log2.txt when 1000 1000 barrier epoch
+python3 visualisation.py log2.txt when 1000 1000 gals epoch
 
 

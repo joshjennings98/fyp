@@ -33,7 +33,6 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
                         ydata.append(int(''.join(c for c in words[2] if c.isdigit()))) 
                         xdata.append(int(words[-1]))
                 elif handlerLogMessage in line:
-                    print(words)
                     idx = int(words[1][:-1])
                     if idx < numEpochs + 1:
                         n = ''.join(c for c in words[3] if c.isdigit())

@@ -35,7 +35,7 @@ def devicesGenGALS(properties : str, states : str, inits : str, assignments : st
 \t\t\t\t\tdeviceState->Icount=0;
 \t\t\t\t\tdeviceState->pendingFires=1;
 \t\t\t\t\tdeviceState->finishRefractory=0;
-\t\t\t\t\tdeviceState->rts = RTS_FLAG_fire;		   
+\t\t\t\t\tdeviceState->rts = RTS_FLAG_fire;		
 \t\t\t\t\t]]>
 \t\t\t\t</OnInit> 
 \t\t\t\t<InputPin name="input" messageTypeId="synapse"> 

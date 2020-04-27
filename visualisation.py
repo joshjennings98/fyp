@@ -78,8 +78,12 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
         with open(filename, 'r') as f:
             lines = f.readlines()
 
-        xdata = range(numEpochs + 1) if ty == "epoch" else range(numEpochs + 1)
-        ydata = [0] * (numEpochs + 1)  if ty == "epoch" else [0] * (numEpochs + 1)
+        if tx == "clocked":
+            ydata = [0] * (numEpochs // 3 + 1)  if ty == "epoch" else [0] * (numEpochs + 1)
+            xdata = range(numEpochs // 3 + 1) if ty == "epoch" else range(numEpochs + 1)
+        else:
+            ydata = [0] * (numEpochs + 1)  if ty == "epoch" else [0] * (numEpochs + 1)
+            xdata = range(numEpochs + 1) if ty == "epoch" else range(numEpochs + 1)
 
         curClock = 0
 
@@ -89,6 +93,10 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
                 if ty == "epoch":
                     if tx == "barrier":
                         ydata[int(words[-1]) - 1] += 1
+                    elif tx == "clocked":
+                        idx = int(words[1][:-1]) // 3
+                        if idx < numEpochs // 3 + 1:
+                            ydata[idx] += 1
                     else:
                         idx = int(words[1][:-1])
                         if idx < numEpochs + 1:
@@ -108,7 +116,7 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
         fig.suptitle("Plot of the number of neurons that fire at each epoch")
 
         axis.plot(xdata, ydata)
-        axis.set_xlim(0, numEpochs)
+        axis.set_xlim(0, numEpochs // 3 + 1 if tx == "clocked" else numEpochs)
         axis.set_ylim(0, numNeurons)
         
         if ty == "epoch":

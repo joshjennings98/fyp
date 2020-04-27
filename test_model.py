@@ -10,6 +10,7 @@ Ni = 200
 
 epochs = 1000
 
+"""
 re = np.random.uniform(0, 1, Ne)
 ri = np.random.uniform(0, 1, Ni)
 
@@ -22,6 +23,20 @@ S = np.concatenate([0.5 * np.random.uniform(0, 1, (Ne, Ne + Ni)), -1 * np.random
 
 v = -65 * np.ones(Ne + Ni)
 u = b * v
+"""
+
+re = np.random.uniform(0.8, 1, Ne)
+ri = np.random.uniform(0.8, 1, Ni)
+
+a = np.concatenate([0.02 * np.ones(Ne), 0.1 * ri])
+b = np.concatenate([0.2 * np.ones(Ne), 0.2 * ri])
+c = np.concatenate([-65 * re, -65 * np.ones(Ni)])
+d = np.concatenate([2 * re, 2 * np.ones(Ni)])
+
+S = np.concatenate([0.5 * np.random.uniform(0, 1, (Ne, Ne + Ni)), -1 * np.random.uniform(0, 1, (Ni, Ne + Ni))])
+
+v = a
+u = b
 
 firings = []
 

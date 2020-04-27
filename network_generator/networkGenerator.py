@@ -206,6 +206,7 @@ class Network(object):
                     countEdges += 1
                     if connection == 1: 
                         weight = -rand() if rand() > 0.8 else 0.5 * rand() # TODO: change to better random values
+                        #weight = -rand() if idx > 8*numNeurons//10 else 0.5 * rand()
                         edge = f"\t\t\t<EdgeI path=\"{neuron.name}:input-n_{idx}:fire\"><P>\"weight\":{weight}</P></EdgeI>\n"
                         connections.append(edge)
                         connectionsTracker[(f"{neuron.name}", f"n_{idx}")] = 1

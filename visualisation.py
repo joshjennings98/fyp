@@ -32,6 +32,10 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
                     if handlerLogMessage in line:
                         ydata.append(int(''.join(c for c in words[2] if c.isdigit()))) 
                         xdata.append(int(words[-1]))
+                elif tx == "clocked":
+                    if handlerLogMessage in line:
+                        xdata.append(int(''.join(c for c in words[1] if c.isdigit())) // 3) 
+                        ydata.append(int(''.join(c for c in words[3] if c.isdigit())))
                 elif handlerLogMessage in line:
                     idx = int(words[1][:-1])
                     if idx < numEpochs + 1:
@@ -59,7 +63,7 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
         fig.suptitle("Plot of which neurons are firing at each epoch")
         
         axis.scatter(xdata, ydata, s=1)
-        axis.set_xlim(0, numEpochs)
+        axis.set_xlim(0, numEpochs // 3 + 1 if tx == "clocked" else numEpochs)
         axis.set_ylim(0, numNeurons)
         
         if ty == "epoch":

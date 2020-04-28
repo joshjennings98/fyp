@@ -1,6 +1,6 @@
 # neuronGenerator.py
 from networkGenerator import Neuron, NeuronConnections
-from random import randint, random
+import random
 from typing import Tuple, List, Generator
 
 random.seed(123)
@@ -38,7 +38,7 @@ def genConnections(num : int, params : List[Tuple[List[str], float, float, float
                 connections = [0 for k in range(num)]
                 for _ in range(int(connectionProb * num)):
                     while True:
-                        p = randint(0, len(connections) - 1)
+                        p = random.randint(0, len(connections) - 1)
                         if connections[p] == 0 and p != i:
                             connections[p] = 1
                             break

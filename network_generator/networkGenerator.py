@@ -6,7 +6,12 @@ import threading
 import time
 import os
 
+random.seed(123)
 rand=random.random
+
+def isFloat(x : str) -> bool:
+    x = x[1:] if x[0] == "-" else x
+    return x.replace(".", "", 1).isdigit()
 
 class Param(object):
     """
@@ -23,19 +28,29 @@ class Param(object):
         except:
             raise Exception("Invalid parameter")
 
-class OnReset(object):
+class OnResetInit(object):
     """
-    Takes a string that is the equation for onReset and splits it into the different parts to make it easier to work with.\n  
-    Means that later things won't just be referencing indexes in lists. SImilar to Param class but with less fields.
+    Takes a string that is the equation for onReset or init and splits it into the different parts to make it easier to work with.\n  
+    Means that later things won't just be referencing indexes in lists. Similar to Param class but with less fields.
     """
-    def __init__(self, equ : str) -> None:
+    def __init__(self, equ : str, init : bool = False) -> None:
         equParts = equ.replace(" ", "").split(":") # Strip white space and turn to a better list
         try:
             self.name = equParts[0]
             self.operator = equParts[1]
-            self.value = equParts[2]
+            if isFloat(equParts[2]):
+                self.value = equParts[2]
+            else:
+                self.value = ""
+                last = False
+                for c in equParts[2]:
+                    if last == False and c.isalpha():
+                        self.value += "deviceProperties->" if not init else "deviceState->"
+                    self.value += str(c)
+                    last = c.isalpha()
         except:
-            raise Exception("Invalid reset type")
+            e = "Invalid reset type" if not init else "Invalid init type"
+            raise Exception(e) 
 
 class Neuron(object):
     """
@@ -76,6 +91,7 @@ class Network(object):
     * equations - the list of equations used by the network
     * neurons -  a tuple containing a generator for the neuron properties (Neuron class) and connections (NeuronConnections class)
     * onReset - a set of assignments that happen when the threshold is met (format: state variable : operator : network property)
+    * init - what to initialise states too
     * maxt - the maximum number of time steps
     * graphType - the type of network: gals, clocked
     
@@ -85,18 +101,19 @@ class Network(object):
     * makeGraph - function called on initialisation to generate a graph
     * printGraph - saves the graph to 'name.xml'. Called by the user
     """
-    def __init__(self, name : str, equations : List[str], threshold : str, neurons : Tuple[Generator[Neuron, None, None], Generator[NeuronConnections, None, None]], onReset : List[str], maxt : int, graphType : str) -> None:
+    def __init__(self, name : str, equations : List[str], threshold : str, neurons : Tuple[Generator[Neuron, None, None], Generator[NeuronConnections, None, None]], onReset : List[str], init : List[str], maxt : int, graphType : str) -> None:
         self.name = name
         self.equations = equations
         self.threshold = threshold
         self.neurons = neurons
         self.maxt = maxt
         self.type = graphType
-        self.onReset = list(map(lambda equ: OnReset(equ), onReset))
+        self.onReset = list(map(lambda equ: OnResetInit(equ), onReset))
+        self.initValues = list(map(lambda equ: OnResetInit(equ, True), init)) 
         self.filename = f"{self.name}.xml"
-        self.makeGraph(self.neurons, self.name, self.maxt, self.equations, self.threshold, self.onReset, self.type)
+        self.makeGraph(self.neurons, self.name, self.maxt, self.equations, self.threshold, self.onReset, self.initValues, self.type)
 
-    def makeGraph(self, neurons : Tuple[Generator[Neuron, None, None], Generator[NeuronConnections, None, None]], name : str, maxt : int, equations : List[str], threshold : str, onReset : List[str], graphType : str) -> None:              
+    def makeGraph(self, neurons : Tuple[Generator[Neuron, None, None], Generator[NeuronConnections, None, None]], name : str, maxt : int, equations : List[str], threshold : str, onReset : List[str], initValues : List[str], graphType : str) -> None:              
         """
         Make a network graph based on the contructors parameters
         """
@@ -128,14 +145,20 @@ class Network(object):
         # Split up neurons tuple
         neurons, neuronConnections, numNeurons = neurons
         baseNeuron = next(neurons)
-        
-        # Generate C code
+
+        # Replace R with random number and evaluate
+        for l in baseNeuron.props:
+            r = rand()
+            l.value = eval(l.value.replace("R", str(r)))
+
+        # Generate C code 
         properties = '\n\t\t'.join(list(map(lambda prop : f"\t\t\t<Scalar name=\"{prop.name}\" type=\"{prop.type}\" default=\"{prop.value}\"/>", baseNeuron.props)))
         states = '\n\t\t'.join(list(map(lambda state : f"\t\t\t<Scalar name=\"{state.name}\" type=\"{state.type}\"/>", baseNeuron.states)))
-        inits = '\n\t\t'.join(list(map(lambda var : f"\t\t\tdeviceState->{var.name} = deviceProperties->{var.name}; // Set initial {var.name} value", baseNeuron.states)))
+        inits = '\n\t\t'.join(list(map(lambda var : f"\t\t\tdeviceState->{var.name} = deviceProperties->{var.name}; // Set initial {var.name} value", baseNeuron.states))) + "\n"
+        inits += '\n\t\t'.join(list(map(lambda var : f"\t\t\tdeviceState->{var.name} {var.operator} {var.value}; // Set initial {var.name} value", initValues)))
         assignments = '\n\t\t'.join(list(map(lambda var : f"\t\t\t\t{var.type} &{var.name} = deviceState->{var.name}; // Assign {var.name}", baseNeuron.states)))
         equations = '\n\t\t\t'.join(list(map(lambda equ : f"\t\t\t\t{equ};", equations))) 
-        onReset = '\n\t\t'.join(list(map(lambda equ: f"\t\t\t\t\t{equ.name} {equ.operator} deviceProperties->{equ.value};", onReset)))
+        onReset = '\n\t\t'.join(list(map(lambda equ: f"\t\t\t\t\t{equ.name} {equ.operator} {equ.value};", onReset)))
         
         with open(self.filename, 'w') as f:
             countEdges = 0
@@ -181,7 +204,11 @@ class Network(object):
             print("Generating devices.")
 
             for neuron in neurons:
-                neuronProps = ','.join(list(map(lambda prop : f"\"{prop.name}\":{prop.value if (prop.propState != 'sr') else round(float(prop.value) * 0.001 * random.randrange(800, 1000, 1), 3)}", neuron.props)))
+                # Replace R with random number and evaluate
+                for l in neuron.props:
+                    r = rand()
+                    l.value = eval(l.value.replace("R", str(r)))
+                neuronProps = ','.join(list(map(lambda prop : f"\"{prop.name}\":{prop.value}", neuron.props)))
                 device = f"\t\t\t<DevI id=\"{neuron.name}\" type=\"neuron\"><P>{neuronProps},\"refractory\":{neuron.refractory},\"seed\":{random.randint(0,4294967295)}</P></DevI>\n"
                 f.write(device)
                 count += 1     
@@ -205,8 +232,8 @@ class Network(object):
                 for idx, connection in enumerate(neuron.connections): 
                     countEdges += 1
                     if connection == 1: 
-                        weight = -rand() if rand() > 0.8 else 0.5 * rand() # TODO: change to better random values
-                        #weight = -rand() if idx > 8*numNeurons//10 else 0.5 * rand()
+                        #weight = -rand() if rand() > 0.8 else 0.5 * rand() # TODO: change to better random values
+                        weight = -rand() if idx > 0.8 * numNeurons else 0.5 * rand() # TODO: change to not be hardcoded to izhekevich 80/20 split
                         edge = f"\t\t\t<EdgeI path=\"{neuron.name}:input-n_{idx}:fire\"><P>\"weight\":{weight}</P></EdgeI>\n"
                         connections.append(edge)
                         connectionsTracker[(f"{neuron.name}", f"n_{idx}")] = 1

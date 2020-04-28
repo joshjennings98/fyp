@@ -3,6 +3,8 @@ from networkGenerator import Neuron, NeuronConnections
 from random import randint, random
 from typing import Tuple, List, Generator
 
+random.seed(123)
+
 def genNeuronProperties(num : int, params : List[Tuple[List[str], float, float, float]]) -> Generator[Neuron, None, None]:
     """
     A function for generating a list of neurons.

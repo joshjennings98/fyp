@@ -1,7 +1,13 @@
 # loadConfig.py
 from networkGenerator import Network
 from neuronGenerator import genNeurons
+from mathParser import NumericStringParser
+import random
 import re
+
+random.seed(123)
+rand = random.random
+nsp = NumericStringParser()
 
 def parseParam(param : str) -> str:
     """
@@ -9,16 +15,16 @@ def parseParam(param : str) -> str:
 
     "name : value type : value : deviceType"
     """
-    param = list(filter(lambda x: x != '', re.split(r'[=\s]\s*', param)))
+    param = param.replace(" ", "") #.replace("R", f"{rand()}")
+    param = list(filter(lambda x: x != '', re.split(r'[=\s:]\s*', param)))
     p, propOrState = (1, "p") if param[0] == "property" else (0, "s")
     
     name = param[p].replace(' ', '')
-    vtype = "float" if "." in param[p + 1] or "r" in param[p + 1] else "uint32_t"
+    vtype = "float" if "." in param[p + 1] else "uint32_t"
     value = param[p + 1].replace('r', '')
-    random = "r" if "r" in param[p + 1] else ""
     deviceType = propOrState
 
-    return f"{name} : {vtype} : {value} : {deviceType}{random}"
+    return f"{name} : {vtype} : {value} : {deviceType}"
 
 def makeFromConfig(filename : str, printNetwork : bool = False) -> None:
     """
@@ -39,17 +45,28 @@ def makeFromConfig(filename : str, printNetwork : bool = False) -> None:
         x = list(filter(lambda x: x != [['']], x))
         # Load parameters into a dictionary
         for param in x:
-            parameters[param[0][0]] = param[1]
+            parameters[param[0][0]] = param[1]            
         for x in parameters:
             # Since you can have multiple parameters, account for that
             if "parameter" in x:
                 params = list(map(lambda el: parseParam(el), parameters[x]))
                 p = params[:-3]
+
+                """
+                newP = []
+                r = rand()
+                for l in list(map(lambda x: x.replace(' ', "").split(':'), p)):
+                    l[2] = str(eval(l[2].replace("R", f"{r}")))
+                    newP.append(" : ".join(l))
+                """
+
                 meta = list(map(lambda x: x.replace(' ', "").split(':')[2], params[-3:]))
                 allParams.append((p, float(meta[0]), int(meta[1]), float(meta[2])))
             # Turn strings into form "param : what to do to param : property"
-            if x == "reset":
+            if x =="reset":
                 parameters[x] = list(map(lambda x: x.replace(" ", " : "), parameters[x]))
+            if x =="init":
+                parameters[x] = list(map(lambda x: x.replace(" ", "").replace("=", " : = : "), parameters[x]))
             # Name had a space in front of it sometimes so remove that
             if x == "name":
                 parameters[x] = list(map(lambda x: x.replace(" ", ""), parameters[x]))
@@ -60,10 +77,10 @@ def makeFromConfig(filename : str, printNetwork : bool = False) -> None:
         raise Exception("All neurons need to have parameters, check the fractions of all the parameters add up to 1.0")    
     elif frac > 1.0:
         raise Exception("You cannot have the total fraction of parameters greater than 1.0")
-    
+
     # Generate network
     neurons = genNeurons(int(parameters["number"][0]), allParams) 
-    network = Network(parameters["name"][0], parameters["equations"], parameters["threshold"][0], neurons, parameters["reset"], int(parameters["maxt"][0]), parameters["type"][0])
+    network = Network(parameters["name"][0], parameters["equations"], parameters["threshold"][0], neurons, parameters["reset"], parameters["init"], int(parameters["maxt"][0]), parameters["type"][0])
     
     if printNetwork:
         network.printGraph()

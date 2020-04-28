@@ -165,7 +165,6 @@ def devicesGenClocked(properties : str, states : str, inits : str, assignments :
 \t\t\t\t<Properties>
 \t\t\t\t\t<Scalar name="seed" type="uint32_t"/>
 \t\t\t\t\t<Scalar name="refractory" type="uint32_t" default="0"/> 
-\t\t\t\t\t<Scalar name="Ir" type="float" default="5.0"/>
 \t\t{properties}
 \t\t\t\t</Properties>
 \t\t\t\t<State>

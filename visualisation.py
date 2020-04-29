@@ -61,6 +61,8 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
                 
         fig, axis = plt.subplots(1, 1)
         fig.suptitle("Plot of which neurons are firing at each epoch")
+
+        print("Number of fires:", len(xdata))
         
         axis.scatter(xdata, ydata, s=1)
         axis.set_xlim(0, numEpochs // 3 + 1 if tx == "clocked" else numEpochs)

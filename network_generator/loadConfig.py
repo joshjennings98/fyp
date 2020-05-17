@@ -5,7 +5,6 @@ from mathParser import NumericStringParser
 import random
 import re
 
-random.seed(123)
 rand = random.random
 nsp = NumericStringParser()
 

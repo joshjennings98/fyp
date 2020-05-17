@@ -7,7 +7,6 @@ import threading
 import time
 import os
 
-random.seed(123)
 rand=random.random
 
 def isFloat(x : str) -> bool:

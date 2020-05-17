@@ -169,6 +169,7 @@ def devicesGenClocked(properties : str, states : str, inits : str, assignments :
 \t\t\t\t</Properties>
 \t\t\t\t<State>
 \t\t\t\t\t<Scalar name="rng" type="uint32_t"/>
+\t\t\t\t\t<Scalar name="mcount" type="uint32_t"/>
 \t\t\t\t\t<Scalar name="I" type="float"/>
 \t\t\t\t\t<Scalar name="Icount" type="uint32_t"/>
 \t\t\t\t\t<Scalar name="fireValue" type="int8_t"/>
@@ -186,6 +187,7 @@ def devicesGenClocked(properties : str, states : str, inits : str, assignments :
 \t\t\t\t\t\tdeviceState->Icount=deviceProperties->fanin;
 \t\t\t\t\t\tdeviceState->waitTick=false;
 \t\t\t\t\t\tdeviceState->sentSpike=true;
+\t\t\t\t\t\tdeviceState->mcount = 0;
 \t\t\t\t\t\t]]>
 \t\t\t\t\t</OnInit>
 \t\t\t\t<InputPin name="tick" messageTypeId="tick">
@@ -221,8 +223,11 @@ def devicesGenClocked(properties : str, states : str, inits : str, assignments :
 \t\t\t\t\t\tif (deviceState->finishRefractory > 0) {{
 \t\t\t\t\t\t\tdeviceState->finishRefractory -= 1;
 \t\t\t\t\t\t}} 
+\t\t\t\t\t\t\tmessage->count=0;
 \t\t\t\t\t\tdeviceState->fireValue = {threshold};
 \t\t\t\t\t\tif(deviceState->fireValue){{
+\t\t\t\t\t\t\t//deviceState->mcount += 1;
+\t\t\t\t\t\t\tmessage->count=1;
 \t\t\t\t\t\t\thandler_log(1, "FIRE!");
 \t\t\t\t\t\t\tdeviceState->finishRefractory = deviceProperties->refractory;
 \t\t{onReset}
@@ -260,6 +265,7 @@ def devicesGenClocked(properties : str, states : str, inits : str, assignments :
 \t\t\t\t</Properties>
 \t\t\t\t<State>
 \t\t\t\t\t<Scalar name="waitCount" type="uint32_t"/>
+\t\t\t\t\t<Scalar name="mcount" type="uint32_t"/>
 \t\t\t\t\t<Scalar name="t" type="uint32_t"/>
 \t\t\t\t</State>
 \t\t\t\t<OnInit>
@@ -270,6 +276,7 @@ def devicesGenClocked(properties : str, states : str, inits : str, assignments :
 \t\t\t\t<InputPin name="tock" messageTypeId="tick">
 \t\t\t\t\t<OnReceive>
 \t\t\t\t\t\t<![CDATA[
+\t\t\t\t\t\t\tdeviceState->mcount += message->count;   
 \t\t\t\t\t\t\tdeviceState->waitCount--;
 \t\t\t\t\t\t]]>
 \t\t\t\t\t</OnReceive>
@@ -281,6 +288,7 @@ def devicesGenClocked(properties : str, states : str, inits : str, assignments :
 \t\t\t\t\t\t\tdeviceState->t++;
 \t\t\t\t\t\t\thandler_log(1, "time = %d", deviceState->t);
 \t\t\t\t\t\t\tif(deviceState->t > graphProperties->max_t){{
+\t\t\t\t\t\t\t\thandler_log(1, "final count = %d", deviceState->mcount);
 \t\t\t\t\t\t\t\t*doSend=false;
 \t\t\t\t\t\t\t\tfake_handler_exit(0);
 \t\t\t\t\t\t\t}}
@@ -494,7 +502,11 @@ float grng(uint32_t &state)
 \t\t\t\t\t<Scalar name="fired" type="int8_t"/>
 \t\t\t\t</Message>
 \t\t\t</MessageType>
-\t\t\t<MessageType id="tick"/>
+\t\t\t<MessageType id="tick">
+\t\t\t\t<Message>
+\t\t\t\t\t<Scalar name="count" type="uint32_t"/>
+\t\t\t\t</Message>
+\t\t\t</MessageType>
 \t\t</MessageTypes>
 \t\t<DeviceTypes>
 \t\t\t{devices}\t</DeviceTypes>

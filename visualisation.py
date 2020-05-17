@@ -77,6 +77,16 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
         axis.set_ylabel("Neuron")
         axis.set_title(title)
 
+        firings = np.load('data.npy', allow_pickle=True)
+        
+        firings = list(zip(range(numEpochs // 3 + 1 if tx == "clocked" else numEpochs), firings))
+        firings = list(map(lambda t: list(map(lambda x: (x, t[0]), t[1])), firings))
+        firings = list(filter(lambda l: l != [], firings))
+        firings = [j for i in firings for j in i]
+        
+        ydata, xdata = zip(*firings)
+        axis.scatter(xdata, ydata, s=1, color='red')
+        
         plt.show()
     
     elif (type == "quantity"):
@@ -123,7 +133,7 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
 
         axis.plot(xdata, ydata)
         axis.set_xlim(0, numEpochs // 3 + 1 if tx == "clocked" else numEpochs)
-        axis.set_ylim(0, numNeurons)
+        axis.set_ylim(0, max(ydata))
         
         if ty == "epoch":
             epochOrTimestep = "Epoch"
@@ -133,6 +143,33 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
         axis.set_xlabel(epochOrTimestep)
         axis.set_ylabel("Neuron")
         axis.set_title(title)
+
+        firings = np.load('data.npy', allow_pickle=True)
+        
+        axis.plot(range(numEpochs // 3 if tx == "clocked" else numEpochs), list(map(lambda l: len(l), firings)))
+        """
+        plt.close()
+        fig, axis = plt.subplots(1, 1)
+
+        L = 1000
+        Y = np.fft.fft(list(map(lambda x: len(x), firings)))
+        P2 = abs(Y/L)
+        P1 = P2[:L//2+1]
+        P1[1:-2] = 2*P1[1:-2]
+        
+        axis.plot(range(len(P1)), P1)
+
+        Y = np.fft.fft(ydata)
+        P2 = abs(Y/L)
+        P1 = P2[:L//2+1]
+        P1[1:-2] = 2*P1[1:-2]
+        
+        axis.plot(range(len(P1)), P1)
+
+        axis.set_ylabel("Magnitude")
+        axis.set_xlabel("Frequency")
+        axis.set_title("fft of test_model (blue) and POETS (orange)")
+        """
 
         plt.show()
 

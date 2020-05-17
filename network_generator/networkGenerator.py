@@ -2,9 +2,12 @@
 import random
 from xmlGenerator import *
 from typing import List, Generator, Tuple
+import matplotlib.pyplot as plt
+import numpy as np
 import mathParser
 import threading
 import time
+import scipy.fftpack
 import os
 
 rand=random.random
@@ -78,10 +81,9 @@ class NeuronConnections(object):
 
     Initialise with NeuronConnections(name, props, connections)
     """
-    def __init__(self, name : str, connections : List[int], weight : str) -> None:
+    def __init__(self, name : str, connections : List[int]) -> None:
         self.name = name
         self.connections = connections
-        self.weight = weight
 
 class Network(object):
     """
@@ -204,15 +206,29 @@ class Network(object):
 
             print("Generating devices.")
 
+            propsfortest = [] # for test_model.py
+
             for neuron in neurons:
+                
+                row = []
+
                 # Replace R with random number and evaluate
                 for l in neuron.props:
                     r = rand()
                     l.value = eval(l.value.replace("R", str(r)))
-                neuronProps = ','.join(list(map(lambda prop : f"\"{prop.name}\":{prop.value}", neuron.props)))
+
+                    row.append([l.name, l.value])
+                
+                propsfortest.append(row)
+                
+                neuronProps = ','.join(list(map(lambda prop : f"\"{prop.name}\":{prop.value}", neuron.props)))                
                 device = f"\t\t\t<DevI id=\"{neuron.name}\" type=\"neuron\"><P>{neuronProps},\"refractory\":{neuron.refractory},\"seed\":{random.randint(0,4294967295)}</P></DevI>\n"
                 f.write(device)
                 count += 1     
+
+            # stuff for test_model.py
+            propsfortest = list(zip(*propsfortest))
+            propsfortest = list(map(lambda x: (x[0][0], np.array(list(map(lambda y: y[1], x)))), propsfortest))
 
             f.write("\t\t</DeviceInstances>\n\t\t<EdgeInstances>\n")
 
@@ -227,20 +243,28 @@ class Network(object):
             print("Generated all devices.")
             print("Generating edges.")
 
+            # For test_model.py
+            edges = []
+
             connectionsTracker = {} # used for bidirectional gals
             for neuron in neuronConnections:
+                row = [] # for test_model.py
                 connections = []
                 for idx, connection in enumerate(neuron.connections): 
                     countEdges += 1
                     if connection == 1: 
                         #weight = -rand() if rand() > 0.8 else 0.5 * rand() # TODO: change to better random values
-                        #weight = -rand() if idx > 0.8 * numNeurons else 0.5 * rand() # TODO: change to not be hardcoded to izhekevich 80/20 split
-                        weight = eval(neuron.weight.replace("R", str(rand())))
+                        weight = -rand() if idx > 0.8 * numNeurons else 0.5 * rand() # TODO: change to not be hardcoded to izhekevich 80/20 split
                         edge = f"\t\t\t<EdgeI path=\"{neuron.name}:input-n_{idx}:fire\"><P>\"weight\":{weight}</P></EdgeI>\n"
                         connections.append(edge)
 
+                        row.append(weight)
+
                         if graphType == "gals_bi": # Once I have got a better way to avoid duplicate connections, remove this
                             connectionsTracker[(f"{neuron.name}", f"n_{idx}")] = 1
+                    else:
+                        row.append(0)
+                edges.append(row)
                 count += 1
                 f.write("".join(connections))
 
@@ -258,6 +282,110 @@ class Network(object):
                 f.write("".join(connections))
                 
             print("Generated all edges.")
+            print("Running test.")
+            ################################################################
+
+            # test_model.py stuff
+            propsfortest.append(('edges', np.array([np.array(xi) for xi in edges])))
+            a = propsfortest[0][1]
+            b = propsfortest[1][1]
+            c = propsfortest[2][1]
+            d = propsfortest[3][1]
+
+            S = propsfortest[-1][1].transpose()
+
+            np.random.seed(123)
+
+            Ne = 80
+            Ni = 20
+            epochs = 1000
+            #re = np.random.uniform(0, 1, Ne)
+
+            v = -65 * np.ones(Ne + Ni)
+            u = b * v
+
+            firings = []
+
+            # print("a", a)
+            # print("b", b)
+            # print("c", c)
+            # print("d", d)
+            """
+            print("s", end='')
+            for r in S:
+                print(r)
+            #"""
+            numFires = 0
+
+            for t in range(epochs):
+                #I = np.concatenate([5 * np.random.normal(0, 1, Ne), 2 * np.random.normal(0, 1, Ni)])
+                I = np.concatenate([5 * np.full(Ne, 0.0), 2 * np.full(Ni, 0.0)])
+                
+                fired = np.argwhere(v >= 30).flatten()
+                
+                firings.append(list(fired))
+                numFires += len(fired)
+
+                v[fired] = c[fired]
+                u[fired] = u[fired] + d[fired]
+
+                #print(fired, u[fired])
+
+
+                """
+                if (len(fired) > 1):
+                    print("indexes", fired)
+                    print("values", S[fired])
+                    print("sum", np.sum(S[fired],axis=0))
+                #"""
+
+
+                I = 10
+
+                v = v + 1 * (0.04 * v * v + 5 * v + 140 - u + I)  # step 0.5 ms
+                #v = v + 0.5 * (0.04 * v * v + 5 * v + 140 - u + I)  # for numerical
+
+                u = u + a * (b * v - u)                                    # stability
+
+            print("Test resulted in", numFires, "fires.")
+            np.save('data.npy', firings, allow_pickle=True)
+
+            fig, axis = plt.subplots(1, 1)
+            fig.suptitle("Plot of which neurons are firing at each epoch")
+            
+            axis.plot(range(epochs), list(map(lambda l: len(l), firings)))
+            axis.set_xlim(0, epochs)
+            axis.set_ylim(0, Ne+Ni)
+
+            axis.set_xlabel("Epoch")
+            axis.set_ylabel("Number of firing neurons")
+            axis.set_title("Quantity of neurons firing")
+
+            #plt.show()
+
+            fig, axis = plt.subplots(1, 1)
+
+            firings = list(zip(range(epochs), firings))
+            firings = list(map(lambda t: list(map(lambda x: (x, t[0]), t[1])), firings))
+            firings = list(filter(lambda l: l != [], firings))
+            firings = [j for i in firings for j in i]
+
+            ydata, xdata = zip(*firings)
+
+            axis.scatter(xdata, ydata, s=1)
+            axis.set_xlim(0, epochs)
+            axis.set_ylim(0, Ne+Ni)
+
+            axis.set_xlabel("Epoch")
+            axis.set_ylabel("Neuron")
+            axis.set_title("When each neuron fires")
+
+            #plt.show()
+
+            print("Test results saved to data.npy")
+
+            ################################################################
+
             
             f.write("\t\t</EdgeInstances>\n\t</GraphInstance>\n</Graphs>")
 

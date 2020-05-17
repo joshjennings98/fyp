@@ -30,6 +30,7 @@ def genConnections(num : int, params : List[Tuple[List[str], float, float, float
     i = 0
     for param in params:
         connectionProb = param[3]
+        weight = param[4]
         numOfThisNeuron = param[1]
 
         for _ in range(int(num * numOfThisNeuron)):
@@ -45,7 +46,7 @@ def genConnections(num : int, params : List[Tuple[List[str], float, float, float
             else:
                 connections = [1 for k in range(num)]
                     
-            neuron = NeuronConnections(name, connections)
+            neuron = NeuronConnections(name, connections, weight)
             yield neuron
             i += 1 
 

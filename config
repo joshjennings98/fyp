@@ -25,7 +25,8 @@ Ir = 5.0,
 property = fanin = 1000,
 fraction = 0.8,
 refractory = 0,
-connectionProb = 1;
+connectionProb = 0.01,
+weight = -1 * R;
 
 parameters 2:
 a = 0.02 + 0.08 * R,
@@ -36,10 +37,11 @@ Ir = 2.0,
 property = fanin = 1000,
 fraction = 0.2,
 refractory = 0,
-connectionProb = 1;
+connectionProb = 0.01,
+weight = 0.5 * R;
 
 number:
-1000;
+100000;
 
 maxt:
 1000;

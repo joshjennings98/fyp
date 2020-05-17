@@ -2,6 +2,7 @@
 import random
 from xmlGenerator import *
 from typing import List, Generator, Tuple
+import mathParser
 import threading
 import time
 import os
@@ -78,9 +79,10 @@ class NeuronConnections(object):
 
     Initialise with NeuronConnections(name, props, connections)
     """
-    def __init__(self, name : str, connections : List[int]) -> None:
+    def __init__(self, name : str, connections : List[int], weight : str) -> None:
         self.name = name
         self.connections = connections
+        self.weight = weight
 
 class Network(object):
     """
@@ -151,7 +153,7 @@ class Network(object):
             r = rand()
             l.value = eval(l.value.replace("R", str(r)))
 
-        # Generate C code 
+        # Generate XML code 
         properties = '\n\t\t'.join(list(map(lambda prop : f"\t\t\t<Scalar name=\"{prop.name}\" type=\"{prop.type}\" default=\"{prop.value}\"/>", baseNeuron.props)))
         states = '\n\t\t'.join(list(map(lambda state : f"\t\t\t<Scalar name=\"{state.name}\" type=\"{state.type}\"/>", baseNeuron.states)))
         inits = '\n\t\t'.join(list(map(lambda var : f"\t\t\tdeviceState->{var.name} = deviceProperties->{var.name}; // Set initial {var.name} value", baseNeuron.states))) + "\n"
@@ -226,22 +228,26 @@ class Network(object):
             print("Generated all devices.")
             print("Generating edges.")
 
-            connectionsTracker = {}
+            connectionsTracker = {} # used for bidirectional gals
             for neuron in neuronConnections:
                 connections = []
                 for idx, connection in enumerate(neuron.connections): 
                     countEdges += 1
                     if connection == 1: 
                         #weight = -rand() if rand() > 0.8 else 0.5 * rand() # TODO: change to better random values
-                        weight = -rand() if idx > 0.8 * numNeurons else 0.5 * rand() # TODO: change to not be hardcoded to izhekevich 80/20 split
+                        #weight = -rand() if idx > 0.8 * numNeurons else 0.5 * rand() # TODO: change to not be hardcoded to izhekevich 80/20 split
+                        weight = eval(neuron.weight.replace("R", str(rand())))
                         edge = f"\t\t\t<EdgeI path=\"{neuron.name}:input-n_{idx}:fire\"><P>\"weight\":{weight}</P></EdgeI>\n"
                         connections.append(edge)
-                        connectionsTracker[(f"{neuron.name}", f"n_{idx}")] = 1
+
+                        if graphType == "gals_bi": # Once I have got a better way to avoid duplicate connections, remove this
+                            connectionsTracker[(f"{neuron.name}", f"n_{idx}")] = 1
                 count += 1
                 f.write("".join(connections))
 
             activateTimer2 = False
 
+            # change this so it doesn't use the dict
             if graphType == "gals_bi":
                 print("Generating reverse edges.")
                 connections = []

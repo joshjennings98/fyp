@@ -45,12 +45,12 @@ def makeFromConfig(filename : str, printNetwork : bool = False) -> None:
         x = list(filter(lambda x: x != [['']], x))
         # Load parameters into a dictionary
         for param in x:
-            parameters[param[0][0]] = param[1]            
+            parameters[param[0][0]] = param[1]
         for x in parameters:
             # Since you can have multiple parameters, account for that
             if "parameter" in x:
                 params = list(map(lambda el: parseParam(el), parameters[x]))
-                p = params[:-3]
+                p = params[:-4]
 
                 """
                 newP = []
@@ -60,8 +60,8 @@ def makeFromConfig(filename : str, printNetwork : bool = False) -> None:
                     newP.append(" : ".join(l))
                 """
 
-                meta = list(map(lambda x: x.replace(' ', "").split(':')[2], params[-3:]))
-                allParams.append((p, float(meta[0]), int(meta[1]), float(meta[2])))
+                meta = list(map(lambda x: x.replace(' ', "").split(':')[2], params[-4:]))
+                allParams.append((p, float(meta[0]), int(meta[1]), float(meta[2]), meta[3]))
             # Turn strings into form "param : what to do to param : property"
             if x =="reset":
                 parameters[x] = list(map(lambda x: x.replace(" ", " : "), parameters[x]))

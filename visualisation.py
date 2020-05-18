@@ -46,10 +46,12 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
             elif ty == "graph":
                 if tx == "clocked":
                     if "time" in line:
-                        curClock = int(words[-1])
+                        curClock = int(words[-2])  # or words[-1]
                     elif handlerLogMessage in line:
-                        ydata.append(int(''.join(c for c in words[0] if c.isdigit()))) 
+                        #ydata.append(int(''.join(c for c in words[0] if c.isdigit()))) 
+                        ydata.append(int(''.join(c for c in words[4].replace('(0)=', '') if c.isdigit()))) 
                         xdata.append(curClock)
+                        print(ydata[-1])
                 elif tx == "gals":
                     if handlerLogMessage in line:
                         ydata.append(int(''.join(c for c in words[0] if c.isdigit()))) 
@@ -120,7 +122,7 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
                 elif ty == "graph":
                     if tx == "clocked":
                         if "time" in line:
-                            curClock = int(words[-1])
+                            curClock = int(words[-2]) # or words[-1]
                         elif handlerLogMessage in line:
                             ydata[curClock] += 1
                     elif tx == "gals":

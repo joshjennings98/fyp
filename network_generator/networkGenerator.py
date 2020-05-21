@@ -294,6 +294,34 @@ class Network(object):
 
             S = propsfortest[-1][1].transpose()
 
+            swapNeurons, swapWeights = True, False
+            permutations = 40
+            swapsDone = []
+            swaps = [i for i in range(numNeurons)]
+            for i in range(permutations):
+                if swapNeurons:
+                    if (len(swapsDone) >= numNeurons):
+                        break
+                    src, dst = random.randint(0, numNeurons-1), random.randint(0, numNeurons-1)
+                    while src in swapsDone or dst in swapsDone:
+                        src, dst = random.randint(0, numNeurons-1), random.randint(0, numNeurons-1)
+                if swapWeights:
+                    S[:,[src, dst]] = S[:,[src, dst]]
+                    S[[src, dst]] = S[[src, dst]]
+
+                print(src, "->", dst)
+                print(dst, "->", src)
+
+                a[src], a[dst] = a[dst], a[src]
+                b[src], b[dst] = b[dst], b[src]
+                c[src], c[dst] = c[dst], c[src]
+                d[src], d[dst] = d[dst], d[src]
+                
+                swaps[src], swaps[dst] = swaps[dst], swaps[src]
+                swapsDone.append(src)
+                swapsDone.append(dst)
+
+            np.save('swaps.npy', np.array(swaps))
             np.random.seed(123)
 
             Ne = 80
@@ -347,8 +375,10 @@ class Network(object):
 
                 u = u + a * (b * v - u)                                    # stability
 
+            fname = 'dataXXX2.npy'
+
             print("Test resulted in", numFires, "fires.")
-            np.save('data.npy', firings, allow_pickle=True)
+            np.save(fname, firings, allow_pickle=True)
 
             fig, axis = plt.subplots(1, 1)
             fig.suptitle("Plot of which neurons are firing at each epoch")
@@ -382,7 +412,7 @@ class Network(object):
 
             #plt.show()
 
-            print("Test results saved to data.npy")
+            print(f"Test results saved to {fname}")
 
             ################################################################
 

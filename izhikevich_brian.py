@@ -10,11 +10,11 @@ duration = 1000 * ms
 # General equations for Izhikevich neurons
 eqs = '''
 dv/dt = (0.04 / ms / mV) * v ** 2 + (5 / ms) * v + 140 * mV / ms - u + I : volt
-du/dt = a * (b * v - u)                               			 : volt/second
-a                                           		     	         : 1/second
-b                                              				 : 1/second
-c                                          			         : volt
-d                                            	  			 : volt/second
+du/dt = a * (b * v - u) : volt/second
+a : 1/second
+b : 1/second
+c : volt
+d : volt/second
 '''
 
 # Reset is the same for all neurons
@@ -25,12 +25,12 @@ u = u + d
 
 # Create excitatory and inhibitory thalamic inputs
 I_Ne = '''
-I = 5 * rand() * mV / ms						 : volt/second (constant over dt)
+I = 5 * rand() * mV / ms : volt/second (constant over dt)
 '''
 
 # Inhibitory neurons thalamic input
 I_Ni = '''
-I = 2 * rand() * mV / ms						 : volt/second (constant over dt)
+I = 2 * rand() * mV / ms : volt/second (constant over dt)
 '''
 
 # Excitatory neurons setup

@@ -2,7 +2,7 @@ name:
 test_network;
 
 equations:
-v += 0.04 * v * v + 5 * v + 140 - u + 10,
+v += 0.04 * v * v + 5 * v + 140 - u + I,
 u += a * (b * v - u);
 
 threshold:

@@ -287,42 +287,49 @@ class Network(object):
 
             # test_model.py stuff
             propsfortest.append(('edges', np.array([np.array(xi) for xi in edges])))
-            a = propsfortest[0][1]
-            b = propsfortest[1][1]
-            c = propsfortest[2][1]
-            d = propsfortest[3][1]
+            a = np.array(propsfortest[0][1], np.float32)
+            b = np.array(propsfortest[1][1], np.float32)
+            c = np.array(propsfortest[2][1], np.float32)
+            d = np.array(propsfortest[3][1], np.float32)
 
-            S = propsfortest[-1][1].transpose()
+            S = np.array(propsfortest[-1][1].transpose(), np.float32)
 
-            swapNeurons, swapWeights = True, False
-            permutations = 40
-            swapsDone = []
+            swapNeurons, swapWeights = True, True
+            fname = 'dataXXX2.npy'
+
+            np.random.seed(123)
+            random.seed(123)
+
             swaps = [i for i in range(numNeurons)]
-            for i in range(permutations):
-                if swapNeurons:
-                    if (len(swapsDone) >= numNeurons):
-                        break
-                    src, dst = random.randint(0, numNeurons-1), random.randint(0, numNeurons-1)
-                    while src in swapsDone or dst in swapsDone:
+
+            if swapNeurons or swapWeights:
+                src, dst = random.randint(0, numNeurons-1), random.randint(0, numNeurons-1)
+                permutations = 1
+                swapsDone = []
+                for i in range(permutations):
+                    if swapNeurons:
+                        if (len(swapsDone) >= numNeurons):
+                            break
                         src, dst = random.randint(0, numNeurons-1), random.randint(0, numNeurons-1)
-                if swapWeights:
-                    S[:,[src, dst]] = S[:,[src, dst]]
-                    S[[src, dst]] = S[[src, dst]]
+                        while src in swapsDone or dst in swapsDone:
+                            src, dst = random.randint(0, numNeurons-1), random.randint(0, numNeurons-1)
+                    if swapWeights:
+                        S[:,[src, dst]] = S[:,[dst, src]] # swap column
+                        S[[src, dst]] = S[[dst, src]] # swap row
 
-                print(src, "->", dst)
-                print(dst, "->", src)
+                    print(src, "->", dst)
+                    print(dst, "->", src)
 
-                a[src], a[dst] = a[dst], a[src]
-                b[src], b[dst] = b[dst], b[src]
-                c[src], c[dst] = c[dst], c[src]
-                d[src], d[dst] = d[dst], d[src]
-                
-                swaps[src], swaps[dst] = swaps[dst], swaps[src]
-                swapsDone.append(src)
-                swapsDone.append(dst)
+                    a[src], a[dst] = a[dst], a[src]
+                    b[src], b[dst] = b[dst], b[src]
+                    c[src], c[dst] = c[dst], c[src]
+                    d[src], d[dst] = d[dst], d[src]
+                    
+                    swaps[src], swaps[dst] = swaps[dst], swaps[src]
+                    swapsDone.append(src)
+                    swapsDone.append(dst)
 
             np.save('swaps.npy', np.array(swaps))
-            np.random.seed(123)
 
             Ne = 80
             Ni = 20
@@ -346,8 +353,8 @@ class Network(object):
             numFires = 0
 
             for t in range(epochs):
-                #I = np.concatenate([5 * np.random.normal(0, 1, Ne), 2 * np.random.normal(0, 1, Ni)])
-                I = np.concatenate([5 * np.full(Ne, 0.0), 2 * np.full(Ni, 0.0)])
+                I = np.concatenate([5 * np.random.normal(0, 1, Ne), 2 * np.random.normal(0, 1, Ni)])
+                #I = np.concatenate([5 * np.full(Ne, 0.0), 2 * np.full(Ni, 0.0)])
                 
                 fired = np.argwhere(v >= 30).flatten()
                 
@@ -368,14 +375,12 @@ class Network(object):
                 #"""
 
 
-                I = 10
+                I += np.sum(S[fired],axis=0)
 
                 v = v + 1 * (0.04 * v * v + 5 * v + 140 - u + I)  # step 0.5 ms
                 #v = v + 0.5 * (0.04 * v * v + 5 * v + 140 - u + I)  # for numerical
 
                 u = u + a * (b * v - u)                                    # stability
-
-            fname = 'dataXXX2.npy'
 
             print("Test resulted in", numFires, "fires.")
             np.save(fname, firings, allow_pickle=True)

@@ -1,5 +1,9 @@
+# This version of the code uses only things compatible with standalone C++ code generation
+
 import time
 from brian2 import *
+
+set_device('cpp_standalone')
 
 seed(123)
 
@@ -7,13 +11,13 @@ start_scope()
 
 # Set up external parameters
 duration = 1000 * ms
-Ne, Ni = 80, 20
+Ne, Ni = 800, 200
 density = 1.0
-
-print(f"Izhikevich Network:\n- Ne = {Ne}\n- Ni = {Ni}\n- Density = {density}\n- Duration = {duration / ms} ms", end='\n\n')
 
 # Set up with neuron indexes to monitor (optional)
 monitorIndexes = []
+
+print(f"Izhikevich Network:\n- Ne = {Ne}\n- Ni = {Ni}\n- Density = {density}\n- Duration = {duration / ms} ms", end='\n\n')
 
 # Izhikevich neuron equations
 eqs = '''
@@ -37,7 +41,7 @@ print("Generating Neurons", end=' ')
 t1 = time.perf_counter()
 
 # Neuron groups
-G = NeuronGroup(Ne+Ni, eqs, threshold = 'v >= 30 * mV', reset=reset, method='euler') 
+G = NeuronGroup(Ne+Ni, eqs, threshold = 'v >= 30 * mV', reset=reset, method='euler', order=10) 
 Ge = G[:Ne] # Excitatory
 Gi = G[Ne:] # Inhibitory
 
@@ -46,54 +50,60 @@ Ge.a = 0.02 / ms
 Ge.b = 0.2 / ms
 Ge.c = [(-65 + 15 * rand() ** 2) * mV for _ in range(Ne)]
 Ge.d = [(8 - 6 * rand() ** 2) * mV / ms for _ in range(Ne)]
+Ge.u = (0.2 * -65) * mV / ms
 
 # Inhibitory specific parameters
 Gi.a = [(0.02 + 0.08 * rand()) / ms for _ in range(Ni)]
-Gi.b = [(0.25 - 0.05 * rand()) / ms for _ in range(Ni)]
+b = [(0.25 - 0.05 * rand()) / ms for _ in range(Ni)] # C++ can't access state variables before simulation is run but we need b for setting v, so store it here
+Gi.b = b
 Gi.c = -65 * mV
 Gi.d = 2 * mV / ms
+Gi.u = -65 * mV * b
 
 # Global neuron parameters
 G.v = -65 * mV
-G.u = G.b * G.v
 
-# Send the thalamic input every time step (1ms)
-@network_operation(dt=1*ms)
-def thalamic_input():
-    Ge.I = [5 * randn() * mV / ms for i in range(Ne)]
-    Gi.I = [2 * randn() * mV / ms for i in range(Ni)]
+# Thalamic inputs
+thalamicInputs = [i for i in range(int(duration / ms))]
+P = SpikeGeneratorGroup(len(thalamicInputs), thalamicInputs, thalamicInputs * ms)
+
+Spe = Synapses(P, Ge, on_pre='I = 5 * randn() * mV / ms') # Excitatory neurons
+Spi = Synapses(P, Gi, on_pre='I = 2 * randn() * mV / ms') # Inhibitory neurons
+
+for S in [Spe, Spi]:
+    S.connect(p=1.0)
 
 print("\rNeurons generated.\nGenerating Synapses", end=' ')
 
 # Create Synapses and connections
 Se = Synapses(Ge, G, 'w : volt/second', on_pre='I += w')
-Si = Synapses(Gi, Ge, 'w : volt/second', on_pre='I += w')
+Si = Synapses(Gi, G, 'w : volt/second', on_pre='I += w')
 
 for S in [Se, Si]:
     S.connect(p=density)
     
     if S == Se:
-        S.w = [0.5 * rand() * mV / ms for _ in range(Ne)] * (len(Se.w) // Ne)
+        S.w = [0.5 * rand() * mV / ms for _ in range(Ne)] * (Ne + Ni)
     else:
-        S.w = [-rand() * mV / ms for _ in range(Ni)] * (len(Si.w) // Ni)
-
+        S.w = [-rand() * mV / ms for _ in range(Ni)] * (Ne + Ni)
 
 t2 = time.perf_counter()
 
 print(f"\rSynapses generated.\nNetwork generation completed in {t2 - t1:0.5f} seconds.\n\nRunning Simulation ", end='')
 
-# Simulate and plot
+# Simulate
 spikes = SpikeMonitor(G)
 
 if monitorIndexes != []: # optionally monitor specific neurons
     potentials = StateMonitor(G, True, record=monitorIndexes) 
-    
+
 run(duration)
 
 t3 = time.perf_counter()
 
 print(f"\rNetwork simulation completed in {t3 - t2:0.5f} seconds.\nNumber of fires: {len(spikes.i)}\n")
 
+# Plot when neurons fire and optionally the monitored threshold voltages
 figure(figsize=(20, 16), dpi=80)
 scatter(spikes.t/ms, spikes.i, s=1)
 title(f"Izhikevich Network Simulation (BRIAN)\n(Ne={Ne}, Ni={Ni}, Density={density})\nPlot of when neurons fire")

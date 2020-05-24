@@ -1,13 +1,21 @@
+import time
 from brian2 import *
 
 seed(123)
 
 start_scope()
 
+# Set up external parameters
+duration = 100 * ms
 Ne, Ni = 80, 20
-duration = 1000 * ms
+density = 1.0
 
-# General equations for Izhikevich neurons
+print(f"Izhikevich Network:\n- Ne = {Ne}\n- Ni = {Ni}\n- Density = {density}\n- Duration = {duration / ms} ms", end='\n\n')
+
+# Set up with neuron indexes to monitor (optional)
+monitorIndexes = []
+
+# Izhikevich neuron equations
 eqs = '''
 dv/dt = (0.04 / ms / mV) * v ** 2 + (5 / ms) * v + 140 * mV / ms - u + I : volt
 du/dt = a * (b * v - u) : volt/second
@@ -15,6 +23,7 @@ a : 1/second
 b : 1/second
 c : volt
 d : volt/second
+I : volt/second
 '''
 
 # Reset is the same for all neurons
@@ -23,61 +32,81 @@ v = c
 u = u + d
 '''
 
-# Create excitatory and inhibitory thalamic inputs
-I_Ne = '''
-I = 5 * rand() * mV / ms : volt/second (constant over dt)
-'''
+print("Generating Neurons", end=' ')
 
-# Inhibitory neurons thalamic input
-I_Ni = '''
-I = 2 * rand() * mV / ms : volt/second (constant over dt)
-'''
+t1 = time.perf_counter()
 
-# Excitatory neurons setup
-G_Ne = NeuronGroup(Ne, eqs + I_Ne, threshold = 'v >= 30 * mV', reset=reset, method='euler') 
+# Neuron groups
+G = NeuronGroup(Ne+Ni, eqs, threshold = 'v >= 30 * mV', reset=reset, method='euler') 
+Ge = G[:Ne] # Excitatory
+Gi = G[Ne:] # Inhibitory
 
-G_Ne.a = 0.02 / ms
-G_Ne.b = 0.2 / ms
-G_Ne.c = (-65 + 15 * rand() ** 2) * mV
-G_Ne.d = (8 - 6 * rand() ** 2) * mV / ms
-G_Ne.v = -G_Ne.c
-G_Ne.u = G_Ne.b * G_Ne.c
-G_Ne.I = 5 * rand() * mV / ms	
+# Excitatory specific parameters
+Ge.a = 0.02 / ms
+Ge.b = 0.2 / ms
+Ge.c = [(-65 + 15 * rand() ** 2) * mV for _ in range(Ne)]
+Ge.d = [(8 - 6 * rand() ** 2) * mV / ms for _ in range(Ne)]
 
-# Inhibitory neurons setup
-G_Ni = NeuronGroup(Ni, eqs + I_Ni, threshold = 'v >= 30 * mV', reset=reset, method='euler') 
+# Inhibitory specific parameters
+Gi.a = [(0.02 + 0.08 * rand()) / ms for _ in range(Ni)]
+Gi.b = [(0.25 - 0.05 * rand()) / ms for _ in range(Ni)]
+Gi.c = -65 * mV
+Gi.d = 2 * mV / ms
 
-G_Ni.a = (0.02 + 0.08 * rand()) / ms
-G_Ni.b = (0.25 - 0.05 * rand()) / ms
-G_Ni.c = -65 * mV
-G_Ni.d = 2 * mV / ms
-G_Ni.v = G_Ni.c
-G_Ni.u = G_Ni.b * G_Ni.c
-G_Ni.I = 2 * rand() * mV / ms
+# Global neuron parameters
+G.v = -65 * mV
+G.u = G.b * G.v
 
-# Create synapses
-S1 = Synapses(G_Ne, G_Ne, 'w : volt/second', on_pre='I += w') # excitatory and excitatory
-S2 = Synapses(G_Ne, G_Ni, 'w : volt/second', on_pre='I += w') # excitatory and inhibitory
-S3 = Synapses(G_Ni, G_Ni, 'w : volt/second', on_pre='I += w') # inhibitory and inhibitory
-S4 = Synapses(G_Ni, G_Ne, 'w : volt/second', on_pre='I += w') # inhibitory and excitatory
+# Send the thalamic input every time step (1ms)
+@network_operation(dt=1*ms)
+def thalamic_input():
+    Ge.I = [5 * randn() * mV / ms for i in range(Ne)]
+    Gi.I = [2 * randn() * mV / ms for i in range(Ni)]
 
-for S in [S1, S2, S3, S4]:
-    S.connect(p=1.0)
+print("\rNeurons generated.\nGenerating Synapses", end=' ')
+
+# Create Synapses and connections
+Se = Synapses(Ge, G, 'w : volt/second', on_pre='I += w')
+Si = Synapses(Gi, Ge, 'w : volt/second', on_pre='I += w')
+
+for S in [Se, Si]:
+    S.connect(p=density)
     
-    if S in [S1, S2]:
+    if S == Se:
         S.w = 0.5 * rand() * mV / ms
     else:
         S.w = -rand() * mV / ms
 
-# Simulate and plot
-M_Ne = SpikeMonitor(G_Ne)
-M_Ni = SpikeMonitor(G_Ni)
+t2 = time.perf_counter()
 
+print(f"\rSynapses generated.\nNetwork generation completed in {t2 - t1:0.5f} seconds.\n\nRunning Simulation ", end='')
+
+# Simulate and plot
+spikes = SpikeMonitor(G)
+
+if monitorIndexes != []: # optionally monitor specific neurons
+    potentials = StateMonitor(G, True, record=monitorIndexes) 
+    
 run(duration)
 
-figure
-plot(M_Ne.t/ms, M_Ne.i, '.k')
-plot(M_Ni.t/ms, M_Ni.i + Ne, '.k') # Offset of Ne on y axis so it doesn't overlay on top of Ni neurons
+t3 = time.perf_counter()
+
+print(f"\rNetwork simulation completed in {t3 - t2:0.5f} seconds.\nNumber of fires: {len(spikes.i)}\n")
+
+figure(figsize=(20, 16), dpi=80)
+scatter(spikes.t/ms, spikes.i, s=1)
+title(f"Izhikevich Network Simulation (BRIAN)\n(Ne={Ne}, Ni={Ni}, Density={density})\nPlot of when neurons fire")
 xlabel('Time (ms)')
 ylabel('Neuron index')
+xlim(0, duration / ms)
+ylim(0, Ne + Ni)
 show()
+
+if monitorIndexes != []:
+    figure(figsize=(20, 16), dpi=80)
+    plot(potentials.t, potentials.v.T)
+    title(f"Izhikevich Network Simulation (BRIAN)\n(Ne={Ne}, Ni={Ni}, Density={density})\nMembrane Potential of specific neurons")
+    xlabel('Time (s)')
+    ylabel('Membrane Potential (V)')
+    legend(list(map(lambda i: f"Neuron {i}", monitorIndexes)))
+    show()

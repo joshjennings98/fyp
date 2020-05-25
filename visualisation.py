@@ -1,6 +1,7 @@
 # visualisation.py
 
 import numpy as np
+from scipy.spatial import distance
 import matplotlib.pyplot as plt
 from os import sys
 
@@ -64,7 +65,17 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
         fig, axis = plt.subplots(1, 1)
         fig.suptitle("Plot of which neurons are firing at each epoch")
 
-        print("Number of fires:", len(xdata))
+        testLen = len(xdata)
+        oldy = []
+        oldx = []
+
+        for y in ydata:
+            oldy.append(y)
+
+        for x in xdata:
+            oldx.append(x)
+
+        print("Number of fires:", testLen)
         
         axis.scatter(xdata, ydata, s=1)
         axis.set_xlim(0, numEpochs // 3 + 1 if tx == "clocked" else numEpochs)
@@ -90,7 +101,71 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
         axis.scatter(xdata, ydata, s=1, color='red')
         
         plt.show()
-    
+
+        y1 = [0 for _ in range(1 + (numEpochs // 3 + 1 if tx == "clocked" else numEpochs))]
+        y2 = [0 for _ in range(1 + (numEpochs // 3 + 1 if tx == "clocked" else numEpochs))]
+        newX = [i for i in range(1 + (numEpochs // 3 + 1 if tx == "clocked" else numEpochs))]
+
+        for i in range(min(len(xdata), testLen)):
+            #print(xdata[i], oldx[i])
+            y1[xdata[i]] += 1
+            y2[oldx[i]+1] += 1
+
+        #for i in range(len(list(zip(y1, y2))) // 10):
+        #    print(list(zip(y1, y2))[i])
+
+        difference = [abs(a - b) for a, b in zip(y1, y2)]
+
+        a = sorted(list(zip(xdata, ydata)))
+        b = sorted(list(zip(oldx, oldy)))
+
+        newA, newB = [], []
+        newA1, newB1 = [], []
+        for i in range(min(len(a), len(b))):
+            if a[i][1] < 80:
+                newA.append(a[i])
+                newB.append(b[i])
+            else:
+                newA1.append(a[i])
+                newB1.append(b[i])
+
+        a, b = np.array(newA), np.array(newB)
+
+        a1, b1 = np.array(newA1), np.array(newB1)
+
+        ecl = []
+        ecl1 = []
+        
+        for i in range(len(newA)):
+            ecl.append(distance.euclidean(a[i], b[i]) - 1)
+
+        for i in range(len(newA1)):
+            ecl1.append(distance.euclidean(a1[i], b1[i]) - 1 + 20)
+        
+        #print(list(zip(xdata, ecl)))
+
+        xd, yd = zip(*list(zip(list(map(lambda x : x[0], newA)), ecl)))
+        xd1, yd1 = zip(*list(zip(list(map(lambda x : x[0], newA1)), ecl1)))
+            
+        fig, (ax1, ax2) = plt.subplots(2, 1)
+        fig.suptitle("Euclidean distance between fires for hardware vs numpy simulation")
+        ax1.scatter(xd, yd, s=1)
+        ax1.set_title("Excitatory Neurons")
+        ax1.set_ylabel("Euclidean distance")
+        ax1.set_xlabel("Timestep")
+        ax2.scatter(xd1, yd1, s=1, c='orange')
+        ax2.set_title("Inhibitory Neurons")
+        ax2.set_ylabel("Euclidean distance")
+        ax2.set_xlabel("Timestep")
+
+        fig, ax = plt.subplots(1, 1)
+        fig.suptitle("MAE between number of fires in each epoch for hardware vs numpy simulation")
+        ax.plot([i for i in range(len(difference))], difference)
+        ax.set_ylabel("Mean Absolute Error")
+        ax.set_xlabel("Timestep")
+
+        plt.show()
+            
     elif (type == "quantity"):
         
         with open(filename, 'r') as f:

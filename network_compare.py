@@ -1,4 +1,5 @@
 # network_compare.py
+# Compare the difference the order of elements makes in the numpy plots
 
 import matplotlib.pyplot as plt
 import numpy as np

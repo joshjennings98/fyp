@@ -295,7 +295,7 @@ class Network(object):
             S = np.array(propsfortest[-1][1].transpose(), np.float32)
 
             swapNeurons, swapWeights = True, True
-            fname = 'dataXXX2.npy'
+            fname = 'dataXXX2TEST.npy'
 
             np.random.seed(123)
             random.seed(123)
@@ -352,6 +352,9 @@ class Network(object):
             #"""
             numFires = 0
 
+            plot = [0, 70, 88] # WHich neuron indexes to plot
+            vPot = []
+
             for t in range(epochs):
                 I = np.concatenate([5 * np.random.normal(0, 1, Ne), 2 * np.random.normal(0, 1, Ni)])
                 #I = np.concatenate([5 * np.full(Ne, 0.0), 2 * np.full(Ni, 0.0)])
@@ -360,6 +363,11 @@ class Network(object):
                 
                 firings.append(list(fired))
                 numFires += len(fired)
+
+                currPot = []
+                for idx in plot:
+                    currPot.append(v[idx])
+                vPot.append(currPot)
 
                 v[fired] = c[fired]
                 u[fired] = u[fired] + d[fired]
@@ -396,9 +404,26 @@ class Network(object):
             axis.set_ylabel("Number of firing neurons")
             axis.set_title("Quantity of neurons firing")
 
-            #plt.show()
+            plt.show()
+
+            # Use this stuff to argue for accuracy of test model and therefore hardware model (since hardware sticks to test for a time)
+            fig, axis = plt.subplots(1, 1)
+            fig.suptitle("Plot of neuron membrane potentials")
+            
+            pots = zip(*vPot)
+            for pot in pots:
+                axis.plot(range(epochs), pot)
+            
+            axis.legend(list(map(lambda i: f"Neuron {i}", plot)))
+
+            axis.set_xlim(0, epochs)
+
+            axis.set_xlabel("Epoch")
+            axis.set_ylabel("Membrane Potential")
 
             fig, axis = plt.subplots(1, 1)
+
+            plt.show()
 
             firings = list(zip(range(epochs), firings))
             firings = list(map(lambda t: list(map(lambda x: (x, t[0]), t[1])), firings))

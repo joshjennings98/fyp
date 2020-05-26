@@ -140,7 +140,7 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
             ecl.append(distance.euclidean(a[i], b[i]) - 1)
 
         for i in range(len(newA1)):
-            ecl1.append(distance.euclidean(a1[i], b1[i]) - 1 + 20)
+            ecl1.append(distance.euclidean(a1[i], b1[i]) - 1)
         
         #print(list(zip(xdata, ecl)))
 
@@ -163,6 +163,9 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
         ax.plot([i for i in range(len(difference))], difference)
         ax.set_ylabel("Mean Absolute Error")
         ax.set_xlabel("Timestep")
+
+        print(f"Excitatory neurons error: Mean = {np.mean(yd)}, Variance = {np.var(yd)}")
+        print(f"Inhibitory neurons error: Mean = {np.mean(yd1)}, Variance = {np.var(yd1)}")
 
         plt.show()
             

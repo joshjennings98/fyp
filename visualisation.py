@@ -1,6 +1,9 @@
 # visualisation.py
 
+# This file ended up being a jumble of spaghetti code as I randomly added code for making graphs I wanted to look at without caring what the code was like
+
 import numpy as np
+from mpl_toolkits.mplot3d import Axes3D
 from scipy.spatial import distance
 import matplotlib.pyplot as plt
 from os import sys
@@ -99,12 +102,46 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
         
         ydata, xdata = zip(*firings)
         axis.scatter(xdata, ydata, s=1, color='red')
-        
+
         plt.show()
+
+        from scipy.spatial.distance import cdist
+        from scipy.optimize import linear_sum_assignment
+
+
+        points2 = list(zip(oldy, oldx))
+        points1 = firings
+
+        d1, d2 = [], []
+
+        #print(points1[0], points2[0])
+
+        for i in range(min(len(points1), len(points2))):
+            d1.append(points1[i])
+            d2.append(points2[i])
+
+        points1 = np.array(d1) - (0, 1)
+        points2 = np.array(d2)
+        
+        C = cdist(points1, points2)
+
+        _, assigment = linear_sum_assignment(C)
+
+        plt.plot(points1[:,1], points1[:,0], 'bo', markersize = 3)
+        plt.plot(points2[:,1], points2[:,0], 'ro', markersize = 3)
+
+        for p in range(min(len(points1), len(points2))):
+            plt.plot([points1[p,1], points2[assigment[p],1]], [points1[p,0], points2[assigment[p],0]], 'k', linewidth=1)
+        
+        plt.xlim(0, numEpochs // 3 + 1 if tx == "clocked" else numEpochs)
+        plt.ylim(0, numNeurons)
+        
 
         y1 = [0 for _ in range(1 + (numEpochs // 3 + 1 if tx == "clocked" else numEpochs))]
         y2 = [0 for _ in range(1 + (numEpochs // 3 + 1 if tx == "clocked" else numEpochs))]
         newX = [i for i in range(1 + (numEpochs // 3 + 1 if tx == "clocked" else numEpochs))]
+
+        plt.show()
 
         for i in range(min(len(xdata), testLen)):
             #print(xdata[i], oldx[i])
@@ -146,6 +183,21 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
 
         xd, yd = zip(*list(zip(list(map(lambda x : x[0], newA)), ecl)))
         xd1, yd1 = zip(*list(zip(list(map(lambda x : x[0], newA1)), ecl1)))
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+
+        fig.suptitle("I don't know what to call this yet")
+        ax.set_zlabel("Euclidean distance")
+        ax.set_ylabel("Neuron")
+        ax.set_xlabel("Timestep")
+
+        allData = list(zip(xdata, ydata))
+
+        ax.scatter(xd, list(map(lambda x: x[1], list(filter(lambda y: y[1] < 80, allData)))), yd, s=3)
+        ax.scatter(xd1, list(map(lambda x: x[1], list(filter(lambda y: y[1] >= 80, allData)))), yd1, s=3)
+
+        fig.show()
             
         fig, (ax1, ax2) = plt.subplots(2, 1)
         fig.suptitle("Euclidean distance between fires for hardware vs numpy simulation")

@@ -79,6 +79,10 @@ def plotLogFile(filename : str, type : str, numEpochs = 6000, numNeurons = 1000,
             oldx.append(x)
 
         print("Number of fires:", testLen)
+
+        hardwareTest = np.array(list(zip(xdata, ydata)))
+        print(hardwareTest)
+        np.save('dataHardwareFires.npy', hardwareTest, allow_pickle=True)
         
         axis.scatter(xdata, ydata, s=1)
         axis.set_xlim(0, numEpochs // 3 + 1 if tx == "clocked" else numEpochs)

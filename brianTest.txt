@@ -1,0 +1,30 @@
+BRIAN test: 10 Neurons
+
+Izhikevich Network:
+- Ne = 8
+- Ni = 2
+- Density = 1.0
+- Duration = 1000.0 ms
+
+Generating Neurons Neurons generated.
+Generating Synapses Synapses generated.
+Network generation completed in 0.15091 seconds.
+
+Running Simulation Network simulation completed in 6.01338 seconds.
+Number of fires: 47
+
+BRIAN test: 100 Neurons
+
+Izhikevich Network:
+- Ne = 80
+- Ni = 20
+- Density = 1.0
+- Duration = 1000.0 ms
+
+Generating Neurons Neurons generated.
+Generating Synapses Synapses generated.
+Network generation completed in 1.04301 seconds.
+
+Running Simulation Network simulation completed in 5.57724 seconds.
+Number of fires: 465
+

@@ -13,7 +13,6 @@ def devicesGenGALS(properties : str, states : str, inits : str, assignments : st
     return f"""<DeviceType id="neuron"> 
 \t\t\t\t<Properties> 
 \t\t\t\t\t<Scalar name="seed" type="uint32_t"/>
-\t\t\t\t\t<Scalar name="Ir" type="float"/>
 \t\t\t\t\t<Scalar name="refractory" type="uint32_t" default="0"/> 
 \t\t{properties} 
 \t\t\t\t</Properties> 
@@ -25,6 +24,7 @@ def devicesGenGALS(properties : str, states : str, inits : str, assignments : st
 \t\t\t\t\t<Scalar name="t" type="uint32_t"/>
 \t\t\t\t\t<Scalar name="finishRefractory" type="uint32_t"/>
 \t\t\t\t\t<Scalar name="I" type="float"/> 
+\t\t\t\t\t<Scalar name="message_count" type="uint32_t"/> 
 \t\t{states}
 \t\t\t\t</State> 
 \t\t\t\t<OnInit>
@@ -34,6 +34,7 @@ def devicesGenGALS(properties : str, states : str, inits : str, assignments : st
 \t\t\t\t\tdeviceState->rng = deviceProperties->seed;
 \t\t\t\t\tdeviceState->I=deviceProperties->Ir * grng(deviceState->rng);
 \t\t\t\t\tdeviceState->Icount=0;
+\t\t\t\t\tdeviceState->message_count=0;
 \t\t\t\t\tdeviceState->pendingFires=1;
 \t\t\t\t\tdeviceState->finishRefractory=0;
 \t\t\t\t\tdeviceState->rts = RTS_FLAG_fire;		
@@ -58,7 +59,9 @@ def devicesGenGALS(properties : str, states : str, inits : str, assignments : st
 \t\t\t\t</InputPin> 
 \t\t\t\t<OutputPin name="fire" messageTypeId="synapse"> 
 \t\t\t\t\t<OnSend>
-\t\t\t\t\t\t<![CDATA[ 
+\t\t\t\t\t\t<![CDATA[  
+\t\t\t\t\t\tdeviceState->message_count++;
+\t\t\t\t\t\thandler_log(1, "%d", deviceState->message_count);
 \t\t\t\t\t\t// Assignments
 \t\t{assignments}
 \t\t\t\t\t\tfloat &I = deviceState->I; // Assign I\n
@@ -67,7 +70,7 @@ def devicesGenGALS(properties : str, states : str, inits : str, assignments : st
 \t\t\t\t\t\t}}\n
 \t\t\t\t\t\tmessage->fired = {threshold};
 \t\t\t\t\t\tif(message->fired){{
-\t\t\t\t\t\t\t// handler_log(1, "FIRE! %i", deviceState->t);
+\t\t\t\t\t\t\t//handler_log(1, "FIRE! %i", deviceState->t);
 \t\t\t\t\t\t\tdeviceState->finishRefractory = deviceState->t + deviceProperties->refractory;
 \t\t{onReset}
 \t\t\t\t\t\t}}\n
@@ -76,6 +79,7 @@ def devicesGenGALS(properties : str, states : str, inits : str, assignments : st
 \t\t\t\t\t\tdeviceState->pendingFires--;
 \t\t\t\t\t\tdeviceState->t++;\n
 \t\t\t\t\t\tif(deviceState->t > graphProperties->max_t && graphProperties->max_t != 0){{
+\t\t\t\t\t\t\thandler_log(1, "Total messages %d", deviceState->message_count);
 \t\t\t\t\t\t\t*doSend=0;
 \t\t\t\t\t\t\tfake_handler_exit(0);
 \t\t\t\t\t\t}}
@@ -123,7 +127,7 @@ def graphGenGALS(name : str, devices : str, maxt: int) -> str:
 \t\t\t\treturn state;
 \t\t\t}}\n
 \t\t\t// Worlds crappiest gaussian
-\t\t\tfloat grng(uint32_t &state)
+\t\t\tfloat grngOG(uint32_t &state)
 \t\t\t{{
 \t\t\t\tuint32_t u=urng(state);
 \t\t\t\tint32_t acc=0;
@@ -136,6 +140,127 @@ def graphGenGALS(name : str, devices : str, maxt: int) -> str:
 \t\t\t\tconst float scale=0.07669649888473704; // == 1/sqrt(170)
 \t\t\t\treturn (acc-60.0f) * scale;
 \t\t\t}} 
+
+// NEW SHIT
+
+float const pi = 3.14159265358979323846;
+float const two_pi = 2.0 * pi;
+float const half_pi = 0.5 * pi;
+
+float cosineCalc1(float x)
+{{
+    const float c1 = 0.9999932946;
+    const float c2 = -0.4999124376;
+    const float c3 = 0.0414877472;
+    const float c4 = -0.0012712095;
+
+    float x2;
+
+    x2 = x * x; // x**2
+
+    return (c1 + x2 * (c2 + x2 * (c3 + c4 * x2)));
+}}
+
+float cosineCalc(float x)
+{{
+    const float c1 = 0.99940307;
+    const float c2 = -0.49558072;
+    const float c3 = 0.03679168;
+
+    float x2;
+
+    x2 = x * x; // x**2
+
+    return (c1 + x2 * (c2 + x2 * c3));
+}}
+
+// Driver for cosine function, simplifies maths
+float cosine(float x)
+{{
+    //return cos(x);
+    int quad; // quadrant
+
+    
+    // float modulo to get rid of x > 2pi
+    while (x > two_pi)
+        x -= two_pi;
+
+    // cos -x = cos x
+    if (x < 0)
+        x = -x;
+    
+
+    quad = int(x/half_pi);
+    switch (quad) {{
+        case 0:
+            return cosineCalc(x);
+        case 1:
+            return -cosineCalc(pi-x);
+        case 2:
+            return -cosineCalc(x-pi);
+        case 3:
+            return cosineCalc(two_pi-x);
+    }}
+}}
+
+// sine is just cosine shifted by half pi
+float sine(float x)
+{{
+    return cosine(half_pi - x);
+}}
+
+float logarithm(float x)
+{{
+    union {{ float f; uint32_t i; }} vx = {{ x }};
+    union {{ uint32_t i; float f; }} mx = {{ (vx.i & 0x007FFFFF) | 0x3f000000 }};
+  
+    float y = vx.i;
+    y *= 1.1920928955078125e-7f;
+
+    return y - 124.22551499f
+           - 1.498030302f * mx.f 
+           - 1.72587999f / (0.3520887068f + mx.f);
+}}
+
+float squareroot(float x)
+{{
+   unsigned int i = *(unsigned int*) &x; 
+   // adjust bias
+   i  += 127 << 23;
+   // approximation of square root
+   i >>= 1; 
+   return *(float*) &i;
+}}
+
+float grng(uint32_t &state)
+{{
+	float mu = 0, sigma = 1;
+	static const float epsilon = 1.7e-37;
+	// static const double two_pi = 2.0*3.14159265358979323846;
+
+	thread_local float z1;
+	thread_local bool generate;
+	generate = !generate;
+
+	if (!generate)
+	   return z1 * sigma + mu;
+
+	float u1, u2;
+
+    do
+    {{
+        u1 = (float)urng(state) / 4294967295.0f;
+        u2 = (float)urng(state) / 4294967295.0f;
+    }}
+    while (u1 <= epsilon);
+
+	float z0;
+	z0 = squareroot(-2.0 * logarithm(u1)) * cosine(two_pi * u2);
+	z1 = squareroot(-2.0 * logarithm(u1)) * sine(two_pi * u2);
+
+	return z0 * sigma + mu;
+}}
+
 \t\t\t]]>
 \t\t</SharedCode> 
 \t\t<MessageTypes> 
@@ -508,7 +633,7 @@ def devicesGenNone(properties : str, states : str, inits : str, assignments : st
     return f"""<DeviceType id="neuron"> 
 \t\t\t\t<Properties> 
 \t\t\t\t\t<Scalar name="seed" type="uint32_t"/>
-\t\t\t\t\t<Scalar name="Ir" type="float"/>
+
 \t\t\t\t\t<Scalar name="refractory" type="uint32_t" default="0"/> 
 \t\t{properties} 
 \t\t\t\t</Properties> 
@@ -610,7 +735,7 @@ def graphGenNone(name : str, devices : str, maxt: int) -> str:
 \t\t\t\treturn state;
 \t\t\t}}\n
 \t\t\t// Worlds crappiest gaussian
-\t\t\tfloat grng(uint32_t &state)
+\t\t\tfloat grngOG(uint32_t &state)
 \t\t\t{{
 \t\t\t\tuint32_t u=urng(state);
 \t\t\t\tint32_t acc=0;
@@ -623,6 +748,127 @@ def graphGenNone(name : str, devices : str, maxt: int) -> str:
 \t\t\t\tconst float scale=0.07669649888473704; // == 1/sqrt(170)
 \t\t\t\treturn (acc-60.0f) * scale;
 \t\t\t}} 
+
+// NEW SHIT
+
+float const pi = 3.14159265358979323846;
+float const two_pi = 2.0 * pi;
+float const half_pi = 0.5 * pi;
+
+float cosineCalc1(float x)
+{{
+    const float c1 = 0.9999932946;
+    const float c2 = -0.4999124376;
+    const float c3 = 0.0414877472;
+    const float c4 = -0.0012712095;
+
+    float x2;
+
+    x2 = x * x; // x**2
+
+    return (c1 + x2 * (c2 + x2 * (c3 + c4 * x2)));
+}}
+
+float cosineCalc(float x)
+{{
+    const float c1 = 0.99940307;
+    const float c2 = -0.49558072;
+    const float c3 = 0.03679168;
+
+    float x2;
+
+    x2 = x * x; // x**2
+
+    return (c1 + x2 * (c2 + x2 * c3));
+}}
+
+// Driver for cosine function, simplifies maths
+float cosine(float x)
+{{
+    //return cos(x);
+    int quad; // quadrant
+
+    
+    // float modulo to get rid of x > 2pi
+    while (x > two_pi)
+        x -= two_pi;
+
+    // cos -x = cos x
+    if (x < 0)
+        x = -x;
+    
+
+    quad = int(x/half_pi);
+    switch (quad) {{
+        case 0:
+            return cosineCalc(x);
+        case 1:
+            return -cosineCalc(pi-x);
+        case 2:
+            return -cosineCalc(x-pi);
+        case 3:
+            return cosineCalc(two_pi-x);
+    }}
+}}
+
+// sine is just cosine shifted by half pi
+float sine(float x)
+{{
+    return cosine(half_pi - x);
+}}
+
+float logarithm(float x)
+{{
+    union {{ float f; uint32_t i; }} vx = {{ x }};
+    union {{ uint32_t i; float f; }} mx = {{ (vx.i & 0x007FFFFF) | 0x3f000000 }};
+  
+    float y = vx.i;
+    y *= 1.1920928955078125e-7f;
+
+    return y - 124.22551499f
+           - 1.498030302f * mx.f 
+           - 1.72587999f / (0.3520887068f + mx.f);
+}}
+
+float squareroot(float x)
+{{
+   unsigned int i = *(unsigned int*) &x; 
+   // adjust bias
+   i  += 127 << 23;
+   // approximation of square root
+   i >>= 1; 
+   return *(float*) &i;
+}}
+
+float grng(uint32_t &state)
+{{
+	float mu = 0, sigma = 1;
+	static const float epsilon = 1.7e-37;
+	// static const double two_pi = 2.0*3.14159265358979323846;
+
+	thread_local float z1;
+	thread_local bool generate;
+	generate = !generate;
+
+	if (!generate)
+	   return z1 * sigma + mu;
+
+	float u1, u2;
+
+    do
+    {{
+        u1 = (float)urng(state) / 4294967295.0f;
+        u2 = (float)urng(state) / 4294967295.0f;
+    }}
+    while (u1 <= epsilon);
+
+	float z0;
+	z0 = squareroot(-2.0 * logarithm(u1)) * cosine(two_pi * u2);
+	z1 = squareroot(-2.0 * logarithm(u1)) * sine(two_pi * u2);
+
+	return z0 * sigma + mu;
+}}
+
 \t\t\t]]>
 \t\t</SharedCode> 
 \t\t<MessageTypes> 
@@ -652,7 +898,7 @@ def devicesGenExtreme(properties : str, states : str, inits : str, assignments :
     return f"""<DeviceType id="neuron"> 
 \t\t\t\t<Properties> 
 \t\t\t\t\t<Scalar name="seed" type="uint32_t"/>
-\t\t\t\t\t<Scalar name="Ir" type="float"/>
+
 \t\t\t\t\t<Scalar name="refractory" type="uint32_t" default="0"/> 
 \t\t{properties} 
 \t\t\t\t</Properties> 
@@ -777,7 +1023,7 @@ def graphGenExtreme(name : str, devices : str, maxt: int) -> str:
 \t\t\t\treturn state;
 \t\t\t}}\n
 \t\t\t// Worlds crappiest gaussian
-\t\t\tfloat grng(uint32_t &state)
+\t\t\tfloat grngOG(uint32_t &state)
 \t\t\t{{
 \t\t\t\tuint32_t u=urng(state);
 \t\t\t\tint32_t acc=0;
@@ -790,6 +1036,126 @@ def graphGenExtreme(name : str, devices : str, maxt: int) -> str:
 \t\t\t\tconst float scale=0.07669649888473704; // == 1/sqrt(170)
 \t\t\t\treturn (acc-60.0f) * scale;
 \t\t\t}} 
+// NEW SHIT
+
+float const pi = 3.14159265358979323846;
+float const two_pi = 2.0 * pi;
+float const half_pi = 0.5 * pi;
+
+float cosineCalc1(float x)
+{{
+    const float c1 = 0.9999932946;
+    const float c2 = -0.4999124376;
+    const float c3 = 0.0414877472;
+    const float c4 = -0.0012712095;
+
+    float x2;
+
+    x2 = x * x; // x**2
+
+    return (c1 + x2 * (c2 + x2 * (c3 + c4 * x2)));
+}}
+
+float cosineCalc(float x)
+{{
+    const float c1 = 0.99940307;
+    const float c2 = -0.49558072;
+    const float c3 = 0.03679168;
+
+    float x2;
+
+    x2 = x * x; // x**2
+
+    return (c1 + x2 * (c2 + x2 * c3));
+}}
+
+// Driver for cosine function, simplifies maths
+float cosine(float x)
+{{
+    //return cos(x);
+    int quad; // quadrant
+
+    
+    // float modulo to get rid of x > 2pi
+    while (x > two_pi)
+        x -= two_pi;
+
+    // cos -x = cos x
+    if (x < 0)
+        x = -x;
+    
+
+    quad = int(x/half_pi);
+    switch (quad) {{
+        case 0:
+            return cosineCalc(x);
+        case 1:
+            return -cosineCalc(pi-x);
+        case 2:
+            return -cosineCalc(x-pi);
+        case 3:
+            return cosineCalc(two_pi-x);
+    }}
+}}
+
+// sine is just cosine shifted by half pi
+float sine(float x)
+{{
+    return cosine(half_pi - x);
+}}
+
+float logarithm(float x)
+{{
+    union {{ float f; uint32_t i; }} vx = {{ x }};
+    union {{ uint32_t i; float f; }} mx = {{ (vx.i & 0x007FFFFF) | 0x3f000000 }};
+  
+    float y = vx.i;
+    y *= 1.1920928955078125e-7f;
+
+    return y - 124.22551499f
+           - 1.498030302f * mx.f 
+           - 1.72587999f / (0.3520887068f + mx.f);
+}}
+
+float squareroot(float x)
+{{
+   unsigned int i = *(unsigned int*) &x; 
+   // adjust bias
+   i  += 127 << 23;
+   // approximation of square root
+   i >>= 1; 
+   return *(float*) &i;
+}}
+
+float grng(uint32_t &state)
+{{
+	float mu = 0, sigma = 1;
+	static const float epsilon = 1.7e-37;
+	// static const double two_pi = 2.0*3.14159265358979323846;
+
+	thread_local float z1;
+	thread_local bool generate;
+	generate = !generate;
+
+	if (!generate)
+	   return z1 * sigma + mu;
+
+	float u1, u2;
+
+    do
+    {{
+        u1 = (float)urng(state) / 4294967295.0f;
+        u2 = (float)urng(state) / 4294967295.0f;
+    }}
+    while (u1 <= epsilon);
+
+	float z0;
+	z0 = squareroot(-2.0 * logarithm(u1)) * cosine(two_pi * u2);
+	z1 = squareroot(-2.0 * logarithm(u1)) * sine(two_pi * u2);
+
+	return z0 * sigma + mu;
+}}
+
 \t\t\t]]>
 \t\t</SharedCode> 
 \t\t<MessageTypes> 
@@ -816,16 +1182,10 @@ def devicesGenBarrier(properties : str, states : str, inits : str, assignments :
 
     Barrier version.
 
-    For some reason, in order to get a big enough I to fire, Ir must have a default of about 5, and u needs to be set to a specific value. These can be seen below:
-
-    <Scalar name="Ir" type="float" default="5"/>
-
-    deviceState->u = deviceProperties->v * deviceProperties->b;
     """
     return f"""<DeviceType id="neuron"> 
 \t\t\t\t<Properties> 
 \t\t\t\t\t<Scalar name="seed" type="uint32_t"/>
-\t\t\t\t\t<Scalar name="Ir" type="float" default="5"/>
 \t\t\t\t\t<Scalar name="refractory" type="uint32_t" default="0"/> 
 \t\t{properties} 
 \t\t\t\t</Properties> 
@@ -842,7 +1202,6 @@ def devicesGenBarrier(properties : str, states : str, inits : str, assignments :
 \t\t\t\t\t<![CDATA[
 \t\t\t\t\t// Initialise state values
 \t\t{inits}\n
-\t\t\t\t\tdeviceState->u = deviceProperties->v * deviceProperties->b;\n
 \t\t\t\t\tdeviceState->rng = deviceProperties->seed;
 \t\t\t\t\tdeviceState->I=deviceProperties->Ir * grng(deviceState->rng);
 \t\t\t\t\tdeviceState->Icount=0;
@@ -867,7 +1226,7 @@ def devicesGenBarrier(properties : str, states : str, inits : str, assignments :
 \t\t\t\t\t\tdeviceState->t++;
 \t\t\t\t\t\tbool fire = {threshold};
 \t\t\t\t\t\tif(fire){{
-\t\t\t\t\t\t\t// handler_log(1, "FIRE! %i", deviceState->t);
+\t\t\t\t\t\t\t handler_log(1, "FIRE! %i", deviceState->t);
 \t\t\t\t\t\t\t// handler_log(1, "v = %f", deviceState->v);
 \t\t\t\t\t\t\t{onReset}
 \t\t\t\t\t\t}}
@@ -932,7 +1291,7 @@ def graphGenBarrier(name : str, devices : str, maxt: int) -> str:
 \t\t\t\treturn state;
 \t\t\t}}\n
 \t\t\t// Worlds crappiest gaussian
-\t\t\tfloat grng(uint32_t &state)
+\t\t\tfloat grngOG(uint32_t &state)
 \t\t\t{{
 \t\t\t\tuint32_t u=urng(state);
 \t\t\t\tint32_t acc=0;
@@ -945,6 +1304,127 @@ def graphGenBarrier(name : str, devices : str, maxt: int) -> str:
 \t\t\t\tconst float scale=0.07669649888473704; // == 1/sqrt(170)
 \t\t\t\treturn (acc-60.0f) * scale;
 \t\t\t}} 
+
+// NEW SHIT
+
+float const pi = 3.14159265358979323846;
+float const two_pi = 2.0 * pi;
+float const half_pi = 0.5 * pi;
+
+float cosineCalc1(float x)
+{{
+    const float c1 = 0.9999932946;
+    const float c2 = -0.4999124376;
+    const float c3 = 0.0414877472;
+    const float c4 = -0.0012712095;
+
+    float x2;
+
+    x2 = x * x; // x**2
+
+    return (c1 + x2 * (c2 + x2 * (c3 + c4 * x2)));
+}}
+
+float cosineCalc(float x)
+{{
+    const float c1 = 0.99940307;
+    const float c2 = -0.49558072;
+    const float c3 = 0.03679168;
+
+    float x2;
+
+    x2 = x * x; // x**2
+
+    return (c1 + x2 * (c2 + x2 * c3));
+}}
+
+// Driver for cosine function, simplifies maths
+float cosine(float x)
+{{
+    //return cos(x);
+    int quad; // quadrant
+
+    
+    // float modulo to get rid of x > 2pi
+    while (x > two_pi)
+        x -= two_pi;
+
+    // cos -x = cos x
+    if (x < 0)
+        x = -x;
+    
+
+    quad = int(x/half_pi);
+    switch (quad) {{
+        case 0:
+            return cosineCalc(x);
+        case 1:
+            return -cosineCalc(pi-x);
+        case 2:
+            return -cosineCalc(x-pi);
+        case 3:
+            return cosineCalc(two_pi-x);
+    }}
+}}
+
+// sine is just cosine shifted by half pi
+float sine(float x)
+{{
+    return cosine(half_pi - x);
+}}
+
+float logarithm(float x)
+{{
+    union {{ float f; uint32_t i; }} vx = {{ x }};
+    union {{ uint32_t i; float f; }} mx = {{ (vx.i & 0x007FFFFF) | 0x3f000000 }};
+  
+    float y = vx.i;
+    y *= 1.1920928955078125e-7f;
+
+    return y - 124.22551499f
+           - 1.498030302f * mx.f 
+           - 1.72587999f / (0.3520887068f + mx.f);
+}}
+
+float squareroot(float x)
+{{
+   unsigned int i = *(unsigned int*) &x; 
+   // adjust bias
+   i  += 127 << 23;
+   // approximation of square root
+   i >>= 1; 
+   return *(float*) &i;
+}}
+
+float grng(uint32_t &state)
+{{
+	float mu = 0, sigma = 1;
+	static const float epsilon = 1.7e-37;
+	// static const double two_pi = 2.0*3.14159265358979323846;
+
+	thread_local float z1;
+	thread_local bool generate;
+	generate = !generate;
+
+	if (!generate)
+	   return z1 * sigma + mu;
+
+	float u1, u2;
+
+    do
+    {{
+        u1 = (float)urng(state) / 4294967295.0f;
+        u2 = (float)urng(state) / 4294967295.0f;
+    }}
+    while (u1 <= epsilon);
+
+	float z0;
+	z0 = squareroot(-2.0 * logarithm(u1)) * cosine(two_pi * u2);
+	z1 = squareroot(-2.0 * logarithm(u1)) * sine(two_pi * u2);
+
+	return z0 * sigma + mu;
+}}
+
 \t\t\t]]>
 \t\t</SharedCode> 
 \t\t<MessageTypes> 

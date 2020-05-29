@@ -1,4 +1,5 @@
 # xmlGenerator.py
+
 from typing import List
 
 def devicesGenGALS(properties : str, states : str, inits : str, assignments : str, equations : str, threshold : str, onReset : str, relaxed : int = 0) -> str:
@@ -66,7 +67,7 @@ def devicesGenGALS(properties : str, states : str, inits : str, assignments : st
 \t\t\t\t\t\t}}\n
 \t\t\t\t\t\tmessage->fired = {threshold};
 \t\t\t\t\t\tif(message->fired){{
-\t\t\t\t\t\t\thandler_log(1, "FIRE! %i", deviceState->t);
+\t\t\t\t\t\t\t// handler_log(1, "FIRE! %i", deviceState->t);
 \t\t\t\t\t\t\tdeviceState->finishRefractory = deviceState->t + deviceProperties->refractory;
 \t\t{onReset}
 \t\t\t\t\t\t}}\n
@@ -218,7 +219,7 @@ def devicesGenClocked(properties : str, states : str, inits : str, assignments :
 \t\t\t\t\t\tif (deviceState->finishRefractory <= 0) {{
 \t\t\t{equations}
 \t\t\t\t\t\t}} else {{
-\t\t\t\t\t\t\t//handler_log(1, "refractory=%d", deviceState->finishRefractory);
+\t\t\t\t\t\t\t//// handler_log(1, "refractory=%d", deviceState->finishRefractory);
 \t\t\t\t\t\t}}\n
 \t\t\t\t\t\tif (deviceState->finishRefractory > 0) {{
 \t\t\t\t\t\t\tdeviceState->finishRefractory -= 1;
@@ -228,12 +229,12 @@ def devicesGenClocked(properties : str, states : str, inits : str, assignments :
 \t\t\t\t\t\tif(deviceState->fireValue){{
 \t\t\t\t\t\t\t//deviceState->mcount += 1;
 \t\t\t\t\t\t\tmessage->count=1;
-\t\t\t\t\t\t\thandler_log(1, "FIRE!");
+\t\t\t\t\t\t\t// handler_log(1, "FIRE!");
 \t\t\t\t\t\t\tdeviceState->finishRefractory = deviceProperties->refractory;
 \t\t{onReset}
 \t\t\t\t\t\t}}\n
 \t\t\t\t\t\tdeviceState->I=deviceProperties->Ir * grng(deviceState->rng);
-\t\t\t\t\t\t//handler_log(1, "rand=%f", deviceState->I/deviceProperties->Ir);
+\t\t\t\t\t\t//// handler_log(1, "rand=%f", deviceState->I/deviceProperties->Ir);
 \t\t\t\t\t\tdeviceState->Icount=0;
 \t\t\t\t\t\tdeviceState->sentSpike=false;
 \t\t\t\t\t\tdeviceState->waitTick=true;
@@ -286,7 +287,7 @@ def devicesGenClocked(properties : str, states : str, inits : str, assignments :
 \t\t\t\t\t\t<![CDATA[
 \t\t\t\t\t\t\tdeviceState->waitCount=deviceProperties->neuronCount;
 \t\t\t\t\t\t\tdeviceState->t++;
-\t\t\t\t\t\t\thandler_log(1, "time = %d", deviceState->t);
+\t\t\t\t\t\t\t// handler_log(1, "time = %d", deviceState->t);
 \t\t\t\t\t\t\tif(deviceState->t > graphProperties->max_t){{
 \t\t\t\t\t\t\t\thandler_log(1, "final count = %d", deviceState->mcount);
 \t\t\t\t\t\t\t\t*doSend=false;
@@ -351,27 +352,7 @@ def graphGenClocked(name : str, devices : str, maxt: int) -> str:
 \t\t\t\t\tfloat f = (acc-60.0f) * scale;
 \t\t\t\t\treturn f; // >= 0 ? f : -1.0 * f;
 \t\t\t\t}}\n
-\t\t\t\tfloat grngWithRand(uint32_t &state)
-\t\t\t\t{{
-\t\t\t\t\tuint32_t u=rand();
-\t\t\t\t\tint32_t acc=0;
-\t\t\t\t\tfor(unsigned i=0;i<8;i++){{
-\t\t\t\t\t\tacc += u&0xf;
-\t\t\t\t\t\tu=u>>4;
-\t\t\t\t\t}}
-\t\t\t\t\t// a four-bit uniform has mean 7.5 and variance ((15-0+1)^2-1)/12 = 85/4
-\t\t\t\t\t// sum of four uniforms has mean 8*7.5=60 and variance of 8*85/4=170
-\t\t\t\t\tconst float scale=0.07669649888473704; // == 1/sqrt(170)
-\t\t\t\t\tfloat f = (acc-60.0f) * scale;
-\t\t\t\t\treturn f; // >= 0 ? f : -1.0 * f;
-\t\t\t\t}}\n
-#include<random>
-std::default_random_engine generator;
-std::normal_distribution<double> distribution(0.0,1.0);
 
-double grng2(uint32_t &state) {{
-    return distribution(generator);
-}}
 
 // NEW SHIT
 
@@ -462,12 +443,12 @@ float squareroot(float x)
    // approximation of square root
    i >>= 1; 
    return *(float*) &i;
-}}  
+}}
 
 float grng(uint32_t &state)
 {{
 	float mu = 0, sigma = 1;
-	static const float epsilon = std::numeric_limits<float>::min();
+	static const float epsilon = 1.7e-37;
 	// static const double two_pi = 2.0*3.14159265358979323846;
 
 	thread_local float z1;
@@ -571,10 +552,10 @@ def devicesGenNone(properties : str, states : str, inits : str, assignments : st
 \t\t\t\t\t\tif (deviceState->t >= deviceState->finishRefractory) {{
 \t\t\t{equations}
 \t\t\t\t\t\t}}\n
-\t\t\t\t\t\t//handler_log(1, "v=%f, u=%f, I=%f", deviceState->v, deviceState->u, deviceState->I);
+\t\t\t\t\t\t//// handler_log(1, "v=%f, u=%f, I=%f", deviceState->v, deviceState->u, deviceState->I);
 \t\t\t\t\t\tmessage->fired = {threshold};
 \t\t\t\t\t\tif(message->fired){{
-\t\t\t\t\t\t\thandler_log(1, "FIRE! %i", deviceState->t);
+\t\t\t\t\t\t\t// handler_log(1, "FIRE! %i", deviceState->t);
 \t\t\t\t\t\t\tdeviceState->finishRefractory = deviceState->t + deviceProperties->refractory;
 \t\t{onReset}
 \t\t\t\t\t\t}}\n
@@ -722,13 +703,13 @@ def devicesGenExtreme(properties : str, states : str, inits : str, assignments :
 \t\t{assignments}
 \t\t\t\t\t\tfloat &I = deviceState->I; // Assign I\n
 \t\t\t\t\t\tdeviceState->fireSpike = false;
-\t\t\t\t\t\t//handler_log(1, "time diff=%d", deviceState->t_most_recent - deviceState->t_current_max);
+\t\t\t\t\t\t//// handler_log(1, "time diff=%d", deviceState->t_most_recent - deviceState->t_current_max);
 \t\t\t\t\t\tif((deviceState->t_most_recent > deviceState->t_current_max)){{ 
 \t\t\t\t\t\t\t\tint diff = deviceState->t_most_recent - deviceState->t_current_max;
-\t\t\t\t\t\t\t\thandler_log(1, "diff=%d", diff);
+\t\t\t\t\t\t\t\t// handler_log(1, "diff=%d", diff);
 \t\t\t\t\t\t\t\tfor (int i = 0; i < diff; i++) {{
 \t\t\t\t\t\t\t\t\tif (deviceState->finishRefractory <= 0) {{
-\t\t\t\t\t\t\t\t\t\t//handler_log(1, "v = %f, I = %f", deviceState->v, deviceState->I);
+\t\t\t\t\t\t\t\t\t\t//// handler_log(1, "v = %f, I = %f", deviceState->v, deviceState->I);
 \t\t\t\t\t{equations}
 \t\t\t\t\t\t\t\tif({threshold}){{ i = diff; }}
 \t\t\t\t\t\t\t\t\t}} else {{
@@ -738,12 +719,12 @@ def devicesGenExtreme(properties : str, states : str, inits : str, assignments :
 \t\t\t\t\t\t\t\tdeviceState->t_current_max = deviceState->t_most_recent;
 \t\t\t\t\t\t}}
 \t\t\t\t\t\tif({threshold}){{
-\t\t\t\t\t\t\thandler_log(1, "FIRE! %i", deviceState->t);
+\t\t\t\t\t\t\t// handler_log(1, "FIRE! %i", deviceState->t);
 \t\t\t\t\t\t\tdeviceState->fireSpike = true;
 \t\t\t\t\t\t\tdeviceState->finishRefractory = deviceState->t + deviceProperties->refractory;
 \t\t{onReset}
 \t\t\t\t\t\t}}
-\t\t\t\t\t\thandler_log(1, "firespike = %i", deviceState->fireSpike);
+\t\t\t\t\t\t// handler_log(1, "firespike = %i", deviceState->fireSpike);
 \t\t\t\t\t\tmessage->fired = deviceState->t_current_max + 1;
 \t\t\t\t\t\tdeviceState->I=deviceProperties->Ir * grng(deviceState->rng);
 \t\t\t\t\t\tdeviceState->pendingFires--;
@@ -886,8 +867,8 @@ def devicesGenBarrier(properties : str, states : str, inits : str, assignments :
 \t\t\t\t\t\tdeviceState->t++;
 \t\t\t\t\t\tbool fire = {threshold};
 \t\t\t\t\t\tif(fire){{
-\t\t\t\t\t\t\thandler_log(1, "FIRE! %i", deviceState->t);
-\t\t\t\t\t\t\thandler_log(1, "v = %f", deviceState->v);
+\t\t\t\t\t\t\t// handler_log(1, "FIRE! %i", deviceState->t);
+\t\t\t\t\t\t\t// handler_log(1, "v = %f", deviceState->v);
 \t\t\t\t\t\t\t{onReset}
 \t\t\t\t\t\t}}
 \t\t\t\t\t\tdeviceState->fireValue=fire;
@@ -902,7 +883,7 @@ def devicesGenBarrier(properties : str, states : str, inits : str, assignments :
 \t\t\t\t\t\t\t*doSend=false;
 \t\t\t\t\t\t\tfake_handler_exit(0);
 \t\t\t\t\t\t}}
-\t\t\t\t\t\t//handler_log(1, "t = %u", deviceState->t);
+\t\t\t\t\t\t//// handler_log(1, "t = %u", deviceState->t);
 \t\t\t\t\t\tdeviceState->fireValue=false;
 \t\t\t\t\t]]>
 \t\t\t\t</OnSend>

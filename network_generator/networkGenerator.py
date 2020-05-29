@@ -283,6 +283,7 @@ class Network(object):
                 
             print("Generated all edges.")
             print("Running test.")
+            """
             ################################################################
 
             # test_model.py stuff
@@ -331,8 +332,8 @@ class Network(object):
 
             np.save('swaps.npy', np.array(swaps))
 
-            Ne = 80
-            Ni = 20
+            Ne = 800
+            Ni = 200
             epochs = 1000
             #re = np.random.uniform(0, 1, Ne)
 
@@ -345,11 +346,7 @@ class Network(object):
             # print("b", b)
             # print("c", c)
             # print("d", d)
-            """
-            print("s", end='')
-            for r in S:
-                print(r)
-            #"""
+
             numFires = 0
 
             plot = [0, 70, 88] # WHich neuron indexes to plot
@@ -375,12 +372,11 @@ class Network(object):
                 #print(fired, u[fired])
 
 
-                """
-                if (len(fired) > 1):
-                    print("indexes", fired)
-                    print("values", S[fired])
-                    print("sum", np.sum(S[fired],axis=0))
-                #"""
+                #if (len(fired) > 1):
+                #    print("indexes", fired)
+                #    print("values", S[fired])
+                #    print("sum", np.sum(S[fired],axis=0))
+                
 
 
                 I += np.sum(S[fired],axis=0)
@@ -445,7 +441,7 @@ class Network(object):
             print(f"Test results saved to {fname}")
 
             ################################################################
-
+            """
             
             f.write("\t\t</EdgeInstances>\n\t</GraphInstance>\n</Graphs>")
 

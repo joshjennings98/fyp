@@ -1,46 +1,50 @@
 <?xml version='1.0'?>
 <Graphs xmlns="https://poets-project.org/schemas/virtual-graph-schema-v3">
-	<GraphType xmlns="https://poets-project.org/schemas/virtual-graph-schema-v3" id="test_network"> 
-		<Properties> 
-			<Scalar name="max_t" type="uint32_t"/> 
-		</Properties> 
+	<GraphType xmlns="https://poets-project.org/schemas/virtual-graph-schema-v3" id="clocked_100">
+		<Properties>
+			<Scalar name="max_t" type="uint32_t"/>
+		</Properties>
 		<SharedCode>
-			<![CDATA[ 
-			#ifdef POETS_LEGACY_HAS_HANDLER_EXIT 
-			#define _do_handler_exit(code) handler_exit(code) 
-			#else 
-			#define _do_handler_exit(code) ((void)0) 
-			#endif
+			<![CDATA[
+				#ifdef POETS_LEGACY_HAS_HANDLER_EXIT
+				#define _do_handler_exit(code) handler_exit(code)
+				#else
+				#define _do_handler_exit(code) ((void)0)
+				#endif
 
-			#define fake_handler_exit(code) \
-			{ \
-				if((code)==0){ \
-					handler_log(0, "_HANDLER_EXIT_SUCCESS_9be65737_"); \
-				}else{ \
-					handler_log(0, "_HANDLER_EXIT_FAIL_9be65737_"); \
-				} \
-				_do_handler_exit(code); \
-			}
-			uint32_t urng(uint32_t &state)
-			{
-				state = state*1664525+1013904223;
-				return state;
-			}
-
-			// Worlds crappiest gaussian
-			float grngOG(uint32_t &state)
-			{
-				uint32_t u=urng(state);
-				int32_t acc=0;
-				for(unsigned i=0;i<8;i++){
-				acc += u&0xf;
-				u=u>>4;
+				#define fake_handler_exit(code) \
+				{ \
+					if((code)==0){ \
+						handler_log(0, "_HANDLER_EXIT_SUCCESS_9be65737_"); \
+					}else{ \
+						handler_log(0, "_HANDLER_EXIT_FAIL_9be65737_"); \
+					} \
+					_do_handler_exit(code); \
 				}
-				// a four-bit uniform has mean 7.5 and variance ((15-0+1)^2-1)/12 = 85/4
-				// sum of four uniforms has mean 8*7.5=60 and variance of 8*85/4=170
-				const float scale=0.07669649888473704; // == 1/sqrt(170)
-				return (acc-60.0f) * scale;
-			} 
+
+				uint32_t urng(uint32_t &state)
+				{
+					state = state*1664525+1013904223;
+					return state;
+				}
+
+				// Worlds crappiest gaussian
+				float grngOG(uint32_t &state)
+				{
+					uint32_t u=urng(state);
+					int32_t acc=0;
+					for(unsigned i=0;i<8;i++){
+						acc += u&0xf;
+						u=u>>4;
+					}
+					// a four-bit uniform has mean 7.5 and variance ((15-0+1)^2-1)/12 = 85/4
+					// sum of four uniforms has mean 8*7.5=60 and variance of 8*85/4=170
+					const float scale=0.07669649888473704; // == 1/sqrt(170)
+					float f = (acc-60.0f) * scale;
+					return f; // >= 0 ? f : -1.0 * f;
+				}
+
+
 
 // NEW SHIT
 
@@ -162,45 +166,53 @@ float grng(uint32_t &state)
 	return z0 * sigma + mu;
 }
 
-			]]>
-		</SharedCode> 
-		<MessageTypes> 
-			<MessageType id="synapse"> 
-				<Message> 
-					<Scalar name="fired" type="int8_t"/> 
-				</Message>
-			</MessageType> 
-		</MessageTypes> 
-		<DeviceTypes>
-			<DeviceType id="neuron"> 
-				<Properties> 
-					<Scalar name="seed" type="uint32_t"/>
 
+			]]>
+		</SharedCode>
+		<MessageTypes>
+			<MessageType id="spike">
+				<Message>
+					<Scalar name="fired" type="int8_t"/>
+				</Message>
+			</MessageType>
+			<MessageType id="tick">
+				<Message>
+					<Scalar name="count" type="uint32_t"/>
+				</Message>
+			</MessageType>
+		</MessageTypes>
+		<DeviceTypes>
+			<DeviceType id="neuron">
+				<Properties>
+					<Scalar name="seed" type="uint32_t"/>
 					<Scalar name="refractory" type="uint32_t" default="0"/> 
 					<Scalar name="a" type="float" default="0.02"/>
 					<Scalar name="b" type="float" default="0.2"/>
 					<Scalar name="v" type="float" default="-62.51231218883935"/>
 					<Scalar name="u" type="float" default="7.93040395636523"/>
 					<Scalar name="Ir" type="float" default="5.0"/>
-					<Scalar name="fanin" type="uint32_t" default="100"/> 
-				</Properties> 
-				<State> 
-					<Scalar name="rng" type="uint32_t"/> 
-					<Scalar name="pendingFires" type="uint32_t"/>
-					<Scalar name="rts" type="uint32_t"/> 
-					<Scalar name="t" type="uint32_t"/>
+					<Scalar name="fanin" type="uint32_t" default="100"/>
+				</Properties>
+				<State>
+					<Scalar name="rng" type="uint32_t"/>
+					<Scalar name="mcount" type="uint32_t"/>
+					<Scalar name="I" type="float"/>
+					<Scalar name="Icount" type="uint32_t"/>
+					<Scalar name="fireValue" type="int8_t"/>
+					<Scalar name="waitTick" type="int8_t"/>
+					<Scalar name="sentSpike" type="int8_t"/>
 					<Scalar name="finishRefractory" type="uint32_t"/>
-					<Scalar name="I" type="float"/> 
 					<Scalar name="a" type="float"/>
 					<Scalar name="b" type="float"/>
 					<Scalar name="v" type="float"/>
 					<Scalar name="u" type="float"/>
 					<Scalar name="Ir" type="float"/>
-				</State> 
+				</State>
 				<OnInit>
 					<![CDATA[
-					// Initialise state values
-					deviceState->a = deviceProperties->a; // Set initial a value
+						deviceState->rng = deviceProperties->seed;
+
+						deviceState->a = deviceProperties->a; // Set initial a value
 					deviceState->b = deviceProperties->b; // Set initial b value
 					deviceState->v = deviceProperties->v; // Set initial v value
 					deviceState->u = deviceProperties->u; // Set initial u value
@@ -208,73 +220,144 @@ float grng(uint32_t &state)
 			deviceState->v = -65; // Set initial v value
 					deviceState->u = deviceState->v*deviceState->b; // Set initial u value
 
-					deviceState->rng = deviceProperties->seed;
-					deviceState->I=deviceProperties->Ir * grng(deviceState->rng);
-					deviceState->pendingFires=1;
-					deviceState->finishRefractory=0;
-					deviceState->rts = RTS_FLAG_fire;		   
-					]]>
-				</OnInit> 
-				<InputPin name="input" messageTypeId="synapse"> 
-					<Properties> 
-					<Scalar name="weight" type="float"/> 
-					</Properties> 
-					<OnReceive>
-						<![CDATA[ 
-							deviceState->I += edgeProperties->weight; // fire at 1, (1 * weight) = weight so just add weight
-							deviceState->pendingFires++;
+						deviceState->fireValue=false; // We don't fire in the first round
+
+						deviceState->I=deviceProperties->Ir * grng(deviceState->rng);
+						deviceState->Icount=deviceProperties->fanin;
+						deviceState->waitTick=false;
+						deviceState->sentSpike=true;
+						deviceState->mcount = 0;
 						]]>
-					</OnReceive> 
-				</InputPin> 
-				<OutputPin name="fire" messageTypeId="synapse"> 
+					</OnInit>
+				<InputPin name="tick" messageTypeId="tick">
+					<OnReceive>
+						<![CDATA[
+							deviceState->waitTick=false;
+						]]>
+					</OnReceive>
+				</InputPin>
+				<InputPin name="input" messageTypeId="spike">
+					<Properties>
+						<Scalar name="weight" type="float"/>
+				</Properties>
+					<OnReceive>
+					<![CDATA[
+						deviceState->Icount++;
+						if(message->fired){
+							deviceState->I += edgeProperties->weight;
+						}
+						]]>
+					</OnReceive>
+				</InputPin>
+				<OutputPin name="tock" messageTypeId="tick" indexed="false">
 					<OnSend>
-						<![CDATA[ 
-						// Assignments
-						float &a = deviceState->a; // Assign a
+						<![CDATA[
+							float &a = deviceState->a; // Assign a
 						float &b = deviceState->b; // Assign b
 						float &v = deviceState->v; // Assign v
 						float &u = deviceState->u; // Assign u
 						float &Ir = deviceState->Ir; // Assign Ir
-						float &I = deviceState->I; // Assign I
+						float &I=deviceState->I;
 
-						if (deviceState->t >= deviceState->finishRefractory) {
+						if (deviceState->finishRefractory <= 0) {
 							v += 0.04 * v * v + 5 * v + 140 - u + I;
 							u += a * (b * v - u);
+						} else {
+							//// handler_log(1, "refractory=%d", deviceState->finishRefractory);
 						}
 
-						//// handler_log(1, "v=%f, u=%f, I=%f", deviceState->v, deviceState->u, deviceState->I);
-						message->fired = v >= 30;
-						if(message->fired){
-							// handler_log(1, "FIRE! %i", deviceState->t);
-							deviceState->finishRefractory = deviceState->t + deviceProperties->refractory;
+						if (deviceState->finishRefractory > 0) {
+							deviceState->finishRefractory -= 1;
+						} 
+							message->count=0;
+						deviceState->fireValue = v >= 30;
+						if(deviceState->fireValue){
+							//deviceState->mcount += 1;
+							message->count=1;
+							// handler_log(1, "FIRE!");
+							deviceState->finishRefractory = deviceProperties->refractory;
 							v = deviceProperties->v;
 							u += deviceProperties->u;
 						}
 
 						deviceState->I=deviceProperties->Ir * grng(deviceState->rng);
-						deviceState->pendingFires--;
-						deviceState->t++;
-
-						if(deviceState->t > graphProperties->max_t && graphProperties->max_t != 0){
-							*doSend=0;
-							fake_handler_exit(0);
-						}
+						//// handler_log(1, "rand=%f", deviceState->I/deviceProperties->Ir);
+						deviceState->Icount=0;
+						deviceState->sentSpike=false;
+						deviceState->waitTick=true;
 						]]>
-					</OnSend> 
-				</OutputPin> 
+					</OnSend>
+				</OutputPin>
+				<OutputPin name="fire" messageTypeId="spike" indexed="false">
+					<OnSend>
+						<![CDATA[
+							message->fired=deviceState->fireValue;
+							deviceState->sentSpike=true;
+						]]>
+					</OnSend>
+				</OutputPin>
 				<ReadyToSend>
-					<![CDATA[ 
-					*readyToSend = (deviceState->pendingFires > 0) ? RTS_FLAG_fire : 0;
+					<![CDATA[
+						*readyToSend=0;
+						if(deviceState->Icount==deviceProperties->fanin && !deviceState->waitTick && deviceState->sentSpike ){
+							*readyToSend |= RTS_FLAG_tock;
+						}else if(!deviceState->waitTick && !deviceState->sentSpike){
+							*readyToSend |= RTS_FLAG_fire;
+						}
 					]]>
-				</ReadyToSend> 
+				</ReadyToSend>
 			</DeviceType>
-		</DeviceTypes> 
-	</GraphType> 
-	<GraphInstance id="test_network_output" graphTypeId="test_network"> 
-		<Properties> 
+			<DeviceType id="clock">
+				<Properties>
+					<Scalar name="neuronCount" type="uint32_t"/>
+				</Properties>
+				<State>
+					<Scalar name="waitCount" type="uint32_t"/>
+					<Scalar name="mcount" type="uint32_t"/>
+					<Scalar name="t" type="uint32_t"/>
+				</State>
+				<OnInit>
+					<![CDATA[
+						deviceState->waitCount = deviceProperties->neuronCount;
+					]]>
+				</OnInit>
+				<InputPin name="tock" messageTypeId="tick">
+					<OnReceive>
+						<![CDATA[
+							deviceState->mcount += message->count;   
+							deviceState->waitCount--;
+						]]>
+					</OnReceive>
+				</InputPin>
+				<OutputPin name="tick" messageTypeId="tick" indexed="false">
+					<OnSend>
+						<![CDATA[
+							deviceState->waitCount=deviceProperties->neuronCount;
+							deviceState->t++;
+							// handler_log(1, "time = %d", deviceState->t);
+							if(deviceState->t > graphProperties->max_t){
+								handler_log(1, "final count = %d", deviceState->mcount);
+								*doSend=false;
+								fake_handler_exit(0);
+							}
+						]]>
+					</OnSend>
+				</OutputPin>
+				<ReadyToSend>
+					<![CDATA[
+						*readyToSend = deviceState->waitCount==0 ? RTS_FLAG_tick : 0;
+					]]>
+				</ReadyToSend>
+			</DeviceType>
+	</DeviceTypes>
+	</GraphType>
+	<GraphInstance id="clocked_100_output" graphTypeId="clocked_100">
+		<Properties>
 			"max_t":1000
 		</Properties>
-		<DeviceInstances>					<DevI id="n_0" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.10922590762275,"u":7.847047514437977,"Ir":5.0,"fanin":100,"refractory":0,"seed":1052968588</P></DevI>
+		<DeviceInstances>		
+			<DevI id="clock" type="clock"><P>"neuronCount":100</P></DevI>
+			<DevI id="n_0" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.10922590762275,"u":7.847047514437977,"Ir":5.0,"fanin":100,"refractory":0,"seed":1052968588</P></DevI>
 			<DevI id="n_1" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.88485811992224,"u":5.8572492802620015,"Ir":5.0,"fanin":100,"refractory":0,"seed":1925527091</P></DevI>
 			<DevI id="n_2" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.69679376580848,"u":4.25471888450889,"Ir":5.0,"fanin":100,"refractory":0,"seed":2462768976</P></DevI>
 			<DevI id="n_3" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.134319543707825,"u":7.292202475489083,"Ir":5.0,"fanin":100,"refractory":0,"seed":1354044933</P></DevI>
@@ -376,6 +459,206 @@ float grng(uint32_t &state)
 			<DevI id="n_99" type="neuron"><P>"a":0.09356822056654444,"b":0.20024335650081487,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":100,"refractory":0,"seed":4146208330</P></DevI>
 		</DeviceInstances>
 		<EdgeInstances>
+			<EdgeI path="n_0:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_0:tock" />
+			<EdgeI path="n_1:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_1:tock" />
+			<EdgeI path="n_2:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_2:tock" />
+			<EdgeI path="n_3:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_3:tock" />
+			<EdgeI path="n_4:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_4:tock" />
+			<EdgeI path="n_5:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_5:tock" />
+			<EdgeI path="n_6:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_6:tock" />
+			<EdgeI path="n_7:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_7:tock" />
+			<EdgeI path="n_8:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_8:tock" />
+			<EdgeI path="n_9:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_9:tock" />
+			<EdgeI path="n_10:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_10:tock" />
+			<EdgeI path="n_11:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_11:tock" />
+			<EdgeI path="n_12:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_12:tock" />
+			<EdgeI path="n_13:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_13:tock" />
+			<EdgeI path="n_14:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_14:tock" />
+			<EdgeI path="n_15:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_15:tock" />
+			<EdgeI path="n_16:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_16:tock" />
+			<EdgeI path="n_17:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_17:tock" />
+			<EdgeI path="n_18:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_18:tock" />
+			<EdgeI path="n_19:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_19:tock" />
+			<EdgeI path="n_20:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_20:tock" />
+			<EdgeI path="n_21:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_21:tock" />
+			<EdgeI path="n_22:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_22:tock" />
+			<EdgeI path="n_23:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_23:tock" />
+			<EdgeI path="n_24:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_24:tock" />
+			<EdgeI path="n_25:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_25:tock" />
+			<EdgeI path="n_26:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_26:tock" />
+			<EdgeI path="n_27:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_27:tock" />
+			<EdgeI path="n_28:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_28:tock" />
+			<EdgeI path="n_29:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_29:tock" />
+			<EdgeI path="n_30:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_30:tock" />
+			<EdgeI path="n_31:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_31:tock" />
+			<EdgeI path="n_32:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_32:tock" />
+			<EdgeI path="n_33:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_33:tock" />
+			<EdgeI path="n_34:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_34:tock" />
+			<EdgeI path="n_35:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_35:tock" />
+			<EdgeI path="n_36:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_36:tock" />
+			<EdgeI path="n_37:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_37:tock" />
+			<EdgeI path="n_38:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_38:tock" />
+			<EdgeI path="n_39:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_39:tock" />
+			<EdgeI path="n_40:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_40:tock" />
+			<EdgeI path="n_41:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_41:tock" />
+			<EdgeI path="n_42:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_42:tock" />
+			<EdgeI path="n_43:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_43:tock" />
+			<EdgeI path="n_44:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_44:tock" />
+			<EdgeI path="n_45:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_45:tock" />
+			<EdgeI path="n_46:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_46:tock" />
+			<EdgeI path="n_47:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_47:tock" />
+			<EdgeI path="n_48:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_48:tock" />
+			<EdgeI path="n_49:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_49:tock" />
+			<EdgeI path="n_50:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_50:tock" />
+			<EdgeI path="n_51:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_51:tock" />
+			<EdgeI path="n_52:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_52:tock" />
+			<EdgeI path="n_53:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_53:tock" />
+			<EdgeI path="n_54:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_54:tock" />
+			<EdgeI path="n_55:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_55:tock" />
+			<EdgeI path="n_56:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_56:tock" />
+			<EdgeI path="n_57:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_57:tock" />
+			<EdgeI path="n_58:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_58:tock" />
+			<EdgeI path="n_59:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_59:tock" />
+			<EdgeI path="n_60:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_60:tock" />
+			<EdgeI path="n_61:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_61:tock" />
+			<EdgeI path="n_62:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_62:tock" />
+			<EdgeI path="n_63:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_63:tock" />
+			<EdgeI path="n_64:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_64:tock" />
+			<EdgeI path="n_65:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_65:tock" />
+			<EdgeI path="n_66:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_66:tock" />
+			<EdgeI path="n_67:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_67:tock" />
+			<EdgeI path="n_68:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_68:tock" />
+			<EdgeI path="n_69:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_69:tock" />
+			<EdgeI path="n_70:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_70:tock" />
+			<EdgeI path="n_71:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_71:tock" />
+			<EdgeI path="n_72:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_72:tock" />
+			<EdgeI path="n_73:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_73:tock" />
+			<EdgeI path="n_74:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_74:tock" />
+			<EdgeI path="n_75:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_75:tock" />
+			<EdgeI path="n_76:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_76:tock" />
+			<EdgeI path="n_77:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_77:tock" />
+			<EdgeI path="n_78:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_78:tock" />
+			<EdgeI path="n_79:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_79:tock" />
+			<EdgeI path="n_80:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_80:tock" />
+			<EdgeI path="n_81:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_81:tock" />
+			<EdgeI path="n_82:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_82:tock" />
+			<EdgeI path="n_83:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_83:tock" />
+			<EdgeI path="n_84:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_84:tock" />
+			<EdgeI path="n_85:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_85:tock" />
+			<EdgeI path="n_86:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_86:tock" />
+			<EdgeI path="n_87:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_87:tock" />
+			<EdgeI path="n_88:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_88:tock" />
+			<EdgeI path="n_89:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_89:tock" />
+			<EdgeI path="n_90:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_90:tock" />
+			<EdgeI path="n_91:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_91:tock" />
+			<EdgeI path="n_92:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_92:tock" />
+			<EdgeI path="n_93:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_93:tock" />
+			<EdgeI path="n_94:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_94:tock" />
+			<EdgeI path="n_95:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_95:tock" />
+			<EdgeI path="n_96:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_96:tock" />
+			<EdgeI path="n_97:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_97:tock" />
+			<EdgeI path="n_98:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_98:tock" />
+			<EdgeI path="n_99:tick-clock:tick" />
+			<EdgeI path="clock:tock-n_99:tock" />
 			<EdgeI path="n_0:input-n_0:fire"><P>"weight":0.30866615550335486</P></EdgeI>
 			<EdgeI path="n_0:input-n_1:fire"><P>"weight":0.49092014949819446</P></EdgeI>
 			<EdgeI path="n_0:input-n_2:fire"><P>"weight":0.0044256100809969</P></EdgeI>

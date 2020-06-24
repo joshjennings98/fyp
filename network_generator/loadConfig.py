@@ -14,7 +14,7 @@ def parseParam(param : str) -> str:
 
     "name : value type : value : deviceType"
     """
-    param = param.replace(" ", "") #.replace("R", f"{rand()}")
+    param = param.replace(" ", "")
     param = list(filter(lambda x: x != '', re.split(r'[=\s:]\s*', param)))
     p, propOrState = (1, "p") if param[0] == "property" else (0, "s")
     
@@ -50,15 +50,6 @@ def makeFromConfig(filename : str, printNetwork : bool = False) -> None:
             if "parameter" in x:
                 params = list(map(lambda el: parseParam(el), parameters[x]))
                 p = params[:-3]
-
-                """
-                newP = []
-                r = rand()
-                for l in list(map(lambda x: x.replace(' ', "").split(':'), p)):
-                    l[2] = str(eval(l[2].replace("R", f"{r}")))
-                    newP.append(" : ".join(l))
-                """
-
                 meta = list(map(lambda x: x.replace(' ', "").split(':')[2], params[-3:]))
                 allParams.append((p, float(meta[0]), int(meta[1]), float(meta[2])))
             # Turn strings into form "param : what to do to param : property"

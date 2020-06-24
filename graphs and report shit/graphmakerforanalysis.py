@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
-from matplotlib.ticker import EngFormatter
+import math
+from matplotlib.ticker import EngFormatter, FuncFormatter, ScalarFormatter
 
 # n = number of neurons (independent) vary
 # r = firing rate [0:1] (independent) vary
@@ -68,9 +69,11 @@ time = 10000
 fireProb = 0.6
 clusterNum = 1000
 
-formatter0 = EngFormatter()
+#formatter0 = FuncFormatter(lambda v,_: f"${v / (10 ** int(math.log(v,10)))}×10^{int(math.log(v,10))}$" if v > 0 else f"{v}")
+#formatter0 = FuncFormatter(lambda v,_: f"{v / 1000}")
+formatter0 = ScalarFormatter()
 
-x = [i for i in range(1,4*10**5, 100)]
+x = [i for i in range(1,4*10**15, 1000000000)]
 y1 = list(map(lambda el: galsMessagesFrac(degree, time, el), x))
 y2 = list(map(lambda el: clockedMessagesFrac(degree, time, el, fireProb), x))
 y3 = list(map(lambda el: clusterMessagesFrac(degree, time, el, fireProb, clusterNum), x))
@@ -87,14 +90,15 @@ y5f = list(map(lambda el: relaxedGalsMessagesFixed(degree, time, el), x))
 y6f = list(map(lambda el: nonSyncedLIAFMessagesFixed(degree, time, el, fireProb), x))
 y7f = list(map(lambda el: extremeRelaxedLIAFMessagesFixed(degree, time, el, fireProb), x))
 
-fig = plt.figure()
-fig.suptitle("Message Count vs Neuron Count (Izhekevich)", fontsize=16)
+fig = plt.figure(dpi=200)
+fig.suptitle("Message Count vs Neuron Count", fontsize=16)
 
+"""
 ax2 = fig.add_subplot(222)
-ax2.set_xlabel("Neuron Count")
-ax2.xaxis.set_major_formatter(formatter0)
-ax2.set_ylabel("Message Count")
-ax2.yaxis.set_major_formatter(formatter0)
+ax2.set_xlabel("Neuron Count ($×10^4$)")
+#ax2.xaxis.set_major_formatter(formatter0)
+ax2.set_ylabel("Message Count ($×10^{11}$)")
+#ax2.yaxis.set_major_formatter(formatter0)
 firstN = 200
 ax2.plot(x[0:firstN], y3[0:firstN], label=f'Clustered ({clusterNum} clusters)')
 ax2.plot(x[0:firstN], y6[0:firstN], label='Non-Synchronised Leaky-Integrate-And-Fire')
@@ -102,14 +106,18 @@ ax2.plot(x[0:firstN], y7[0:firstN], label='Extreme Relaxed Leaky-Integrate-And-F
 ax2.plot(x[0:firstN], y4[0:firstN], ":" ,label='Barrier')
 ax2.set_title(f"Degree = {degree * 100}%, Time steps = {time}, Firing rate = {fireProb}\n(Note: Message count identical for Leaky-Integrate-And-Fire and Barrier)", fontsize=10)
 #ax2.set_xscale("log")
+ax2.ticklabel_format(style='sci',scilimits=(-3,4),axis='both')
+ax2.yaxis.offsetText.set_visible(False)
+ax2.xaxis.offsetText.set_visible(False)
+
 plt.legend()
 
 ax = fig.add_subplot(221)
-ax.set_xlabel("Neuron Count")
+ax.set_xlabel("Neuron Count ($×10^{5}$)")
 ax.xaxis.set_major_formatter(formatter0)
-ax.set_ylabel("Message Count")
+ax.set_ylabel("Message Count ($×10^{15}$)")
 ax.yaxis.set_major_formatter(formatter0)
-ax.set_xscale("log")
+#ax.set_xscale("log")
 
 ax.plot(x, y1, label='GALS')
 ax.plot(x, y2, label='Clocked')
@@ -119,74 +127,109 @@ ax.plot(x, y5, label='Relaxed GALS')
 ax.plot(x, y6, label='Non-Synchronised Leaky-Integrate-And-Fire')
 ax.plot(x, y7, label='Extreme Relaxed Leaky-Integrate-And-Fire')
 ax.set_title(f"Degree = {degree * 100}%, Time steps = {time}, Firing rate = {fireProb}\n(Note: Message count identical for relaxed and normal GALS)", fontsize=10)
-plt.legend()
 
-ax4 = fig.add_subplot(224)
+ax.ticklabel_format(style='sci',scilimits=(-3,4),axis='both')
+ax.yaxis.offsetText.set_visible(False)
+ax.xaxis.offsetText.set_visible(False)
+
+plt.legend()
+"""
+
+#ax4 = fig.add_subplot(122)
+ax4 = fig.add_subplot(111)
+#ax4.set_xlabel("Neuron Count ($×10^{4}$)")
 ax4.set_xlabel("Neuron Count")
 ax4.xaxis.set_major_formatter(formatter0)
+#ax4.set_ylabel("Message Count ($×10^{8}$)")
 ax4.set_ylabel("Message Count")
 ax4.yaxis.set_major_formatter(formatter0)
 firstN = 200
-ax4.plot(x[0:firstN], y3f3[0:firstN], label=f'Clustered (3 clusters)')
-ax4.plot(x[0:firstN], y1f[0:firstN], label=f'GALS')
-ax4.plot(x[0:firstN], y6f[0:firstN], label='Non-Synchronised Leaky-Integrate-And-Fire')
-ax4.plot(x[0:firstN], y7f[0:firstN], label='Extreme Relaxed Leaky-Integrate-And-Fire')
-ax4.plot(x[0:firstN], y4f[0:firstN], ":" ,label='Barrier')
-ax4.set_title(f"Fixed Degree = {int(degree * 100)}, Time steps = {time}, Firing rate = {fireProb}\n(Note: Message count identical for Leaky-Integrate-And-Fire and Barrier)", fontsize=10)
+#ax4.plot(x[0:firstN], y3f3[0:firstN], label=f'Clustered (3 clusters)')
+ax4.plot(x[0:firstN], y1f[0:firstN], label=f'GALS', c="purple")
+#ax4.plot(x[0:firstN], y6f[0:firstN], label='Non-Synchronised')
+ax4.plot(x[0:firstN], y7f[0:firstN], label='Extremely Relaxed Models', c="orange")
+ax4.plot(x[0:firstN], y4f[0:firstN], ":" ,label='Barrier', c="green")
+ax4.plot(x[0:firstN], y2f[0:firstN], label='Clocked')
+#ax4.set_title(f"Fixed Degree = {int(degree * 100)}, Time steps = {time}, Firing rate = {fireProb}\n(Note: Message count identical for relaxed models and Barrier)", fontsize=10)
 #ax4.set_xscale("log")
+ax4.ticklabel_format(style='sci',scilimits=(-3,4),axis='both')
+#ax4.yaxis.offsetText.set_visible(False)
+#ax4.xaxis.offsetText.set_visible(False)
 plt.legend()
-
-ax3 = fig.add_subplot(223)
-ax3.set_xlabel("Neuron Count")
+"""
+ax3 = fig.add_subplot(121)
+ax3.set_xlabel("Neuron Count ($×10^{5}$)")
 ax3.xaxis.set_major_formatter(formatter0)
-ax3.set_ylabel("Message Count")
+ax3.set_ylabel("Message Count ($×10^{15}$)")
 ax3.yaxis.set_major_formatter(formatter0)
-ax3.set_xscale("log")
+#ax3.set_xscale("log")
+
+ax3.ticklabel_format(style='sci',scilimits=(-3,4),axis='both')
+ax3.yaxis.offsetText.set_visible(False)
+ax3.xaxis.offsetText.set_visible(False)
 
 ax3.plot(x, y1f, label='GALS')
 ax3.plot(x, y2f, label='Clocked')
 ax3.plot(x, y3f, label=f'Clustered ({clusterNum} clusters)')
 ax3.plot(x, y4f, label='Barrier')
 ax3.plot(x, y5f, label='Relaxed GALS')
-ax3.plot(x, y6f, label='Non-Synchronised Leaky-Integrate-And-Fire')
-ax3.plot(x, y7f, label='Extreme Relaxed Leaky-Integrate-And-Fire')
+ax3.plot(x, y6f, label='Non-Synchronised')
+ax3.plot(x, y7f, label='Extreme Relaxed')
 ax3.set_title(f"Fixed Degree = {int(degree * 100)}, Time steps = {time}, Firing rate = {fireProb}\n(Note: Message count identical for relaxed and normal GALS)", fontsize=10)
 
 plt.legend()
 fig.subplots_adjust(wspace = 0.3, hspace = 0.4)
+"""
+#ax.grid(which='both')
+#ax2.grid(which='both')
+ax4.grid(which='both')
+#ax3.grid(which='both')
 
 plt.show()
 
 yVals = [
     (y1, y1f, "GALS"), 
     (y2, y2f, "Clocked"), 
-    (y3, y3f, f'Clustered ({clusterNum} clusters)'), 
+    (y3, y3f, f'{clusterNum} clusters'), 
     (y4, y4f, "Barrier"), 
     (y5, y5f, "Relaxed GALS"), 
-    (y6, y6f, "Non-Synchronised Leaky-Integrate-And-Fire"), 
-    (y7, y7f, "Extreme Relaxed Leaky-Integrate-And-Fire")
+    (y6, y6f, "Non-Synchronised"), 
+    (y7, y7f, "Extremely Relaxed")
     ]
 
 for y in yVals:
     fig = plt.figure()
     fig.suptitle(f"Message Count vs Neuron Count ({y[2]})", fontsize=16)
-    ax1 = fig.add_subplot(121)
-    ax2 = fig.add_subplot(122)
-    ax1.set_xlabel("Neuron Count")
-    ax2.set_xlabel("Neuron Count")
-    ax2.set_xscale("log")
-    ax1.xaxis.set_major_formatter(formatter0)
-    ax2.xaxis.set_major_formatter(formatter0)
-    ax1.set_ylabel("Message Count")
-    ax2.set_ylabel("Message Count")
-    ax1.yaxis.set_major_formatter(formatter0)
-    ax2.yaxis.set_major_formatter(formatter0)
-    ax1.set_title(f"Degree as a percentage of all neurons\nDegree = {degree * 100}%, Time steps = {time}, Firing rate = {fireProb}")
-    ax2.set_title(f"Degree as a fixed number of neurons\nDegree = {int(degree * 100)}, Time steps = {time}, Firing rate = {fireProb}")
-    ax1.plot(x, y[0])
-    ax2.plot(x, y[1])
+    ax1 = fig.add_subplot(111)
+    #ax2 = fig.add_subplot(122)
+    ax1.set_xlabel("Neuron Count ($×10^{5}$)")
+    #ax2.set_xlabel("Neuron Count ($×10^{5}$)")
+    #ax2.set_xscale("log")
+    #ax1.xaxis.set_major_formatter(formatter0)
+    #ax2.xaxis.set_major_formatter(formatter0)
+    ax1.set_ylabel("Message Count ($×10^{8}$)")
+    #ax2.set_ylabel("Message Count ($×10^{8}$)")
+    #ax1.yaxis.set_major_formatter(formatter0)
+    #ax2.yaxis.set_major_formatter(formatter0)
+    #ax1.set_title(f"Degree as a percentage of all neurons\nDegree = {degree * 100}%, Time steps = {time}, Firing rate = {fireProb}")
+    #ax2.set_title(f"Degree as a fixed number of neurons\nDegree = {int(degree * 100)}, Time steps = {time}, Firing rate = {fireProb}")
+    ax1.set_title(f"Degree as a fixed number of neurons\nDegree = {int(degree * 100)}, Time steps = {time}, Firing rate = {fireProb}")
+    #ax1.plot(x, y[0])
+    #ax2.plot(x, y[1])
+    ax1.plot(x, y[1])
+    ax1.grid(which='both')
+    #ax2.grid(which='both')
+    ax1.ticklabel_format(style='sci',scilimits=(0,0),axis='both')
+    ax1.yaxis.offsetText.set_visible(False)
+    ax1.xaxis.offsetText.set_visible(False)
+    #ax2.ticklabel_format(style='sci',scilimits=(0,0),axis='both')
+    #ax2.yaxis.offsetText.set_visible(False)
+    #ax2.xaxis.offsetText.set_visible(False)
 
-plt.show()
+    ax1.set_xlim(0)
+    ax1.set_ylim(0)
+
+    plt.show()
 
 """
 # GALS => t = max (t_synapse + t_return)_0..n

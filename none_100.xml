@@ -1,6 +1,6 @@
 <?xml version='1.0'?>
 <Graphs xmlns="https://poets-project.org/schemas/virtual-graph-schema-v3">
-	<GraphType xmlns="https://poets-project.org/schemas/virtual-graph-schema-v3" id="test_network"> 
+	<GraphType xmlns="https://poets-project.org/schemas/virtual-graph-schema-v3" id="none_100"> 
 		<Properties> 
 			<Scalar name="max_t" type="uint32_t"/> 
 		</Properties> 
@@ -270,7 +270,7 @@ float grng(uint32_t &state)
 			</DeviceType>
 		</DeviceTypes> 
 	</GraphType> 
-	<GraphInstance id="test_network_output" graphTypeId="test_network"> 
+	<GraphInstance id="none_100_output" graphTypeId="none_100"> 
 		<Properties> 
 			"max_t":1000
 		</Properties>

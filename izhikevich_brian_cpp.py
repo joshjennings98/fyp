@@ -4,9 +4,10 @@ import time
 from os import sys
 from brian2 import *
 
-def runBrian(numNeurons, plot=True):
+def runBrian(numNeurons, connectionProb=1.0, plot=True):
 
-    set_device('cpp_standalone')
+    #set_device('cpp_standalone')
+    set_device('cpp_standalone', clean=True)
 
     seed(123)
 
@@ -74,7 +75,7 @@ def runBrian(numNeurons, plot=True):
     Spi = Synapses(P, Gi, on_pre='I = 2 * randn() * mV / ms') # Inhibitory neurons
 
     for S in [Spe, Spi]:
-        S.connect(p=1.0)
+        S.connect(p=connectionProb)
 
     print("\rNeurons generated.\nGenerating Synapses", end=' ')
 
@@ -83,6 +84,7 @@ def runBrian(numNeurons, plot=True):
     Si = Synapses(Gi, G, 'w : volt/second', on_pre='I += w')
 
     for S in [Se, Si]:
+        #S.connect(j='k for k in range(0, Ne+Ni) if rand() < density')
         S.connect(p=density)
         
         if S == Se:
@@ -129,8 +131,9 @@ if __name__ == "__main__":
     
     BrianLogger.suppress_hierarchy('brian2.codegen') # suppress warnings
     numNeurons = int(sys.argv[1])
+    connectionProb = float(sys.argv[2])
     
-    if len(sys.argv) > 2:
-        runBrian(numNeurons, sys.argv[2] in ["True", "true", "1"])
+    if len(sys.argv) > 3:
+        runBrian(numNeurons, connectionProb, sys.argv[3] in ["True", "true", "1"])
     else:
         runBrian(numNeurons)

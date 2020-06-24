@@ -34,6 +34,8 @@ def genConnections(num : int, params : List[Tuple[List[str], float, float, float
             name = f"n_{i}"
             if connectionProb != 1:
                 connections = [0 for k in range(num)]
+                #print(connectionProb * num)
+                #assert(False)
                 for _ in range(int(connectionProb * num)):
                     while True:
                         p = random.randint(0, len(connections) - 1)

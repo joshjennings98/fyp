@@ -47,7 +47,7 @@ else:
     firings1 = [j for i in firings1 for j in i]
 
     ydata, xdata = zip(*firings1)
-    axis.scatter(xdata, ydata, s=1)
+    axis.scatter(xdata, ydata, s=7, c="blue")
 
     # dataset 2 fix
     firings2 = list(zip(range(numEpochs), allRows))
@@ -56,7 +56,8 @@ else:
     firings2 = [j for i in firings2 for j in i]
     
     ydata, xdata = zip(*firings2)
-    axis.scatter(xdata, ydata, s=1)
+    #ydata = list(map(lambda x: x if x < 100 else 89, ydata))
+    axis.scatter(xdata, ydata, s=7, c="orange")
 
     axis.set_xlim(0, numEpochs)
     axis.set_ylim(0, numNeurons)

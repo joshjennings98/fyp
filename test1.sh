@@ -29,14 +29,15 @@ mv $1.graph.so graph_schema-4.2.0/providers
 cd graph_schema-4.2.0
 
 # Run epoch_sim
-bin/epoch_sim /home/josh/fyp/$1.xml 2> ../log2.txt
-#bin/graph_sim /home/josh/fyp/$1.xml 2> ../log2.txt
+#bin/epoch_sim /home/josh/fyp/$1.xml 2> ../log2.txt
+#time bin/graph_sim /home/josh/fyp/$1.xml 2> ../log2.txt
+time bin/graph_sim /home/josh/fyp/$1.xml #2>> ../loggylog.txt
 
 # Go back to the main directory
 cd ..
 
 # MAKE SURE YOU CALL WITH THE CORRECT STUFF
-python3 visualisation.py log2.txt when 3000 1000 clocked epoch
-python3 visualisation.py log2.txt quantity 3000 1000 clocked epoch
+#python3 visualisation.py log2.txt when 3000 1000 clocked epoch
+#python3 visualisation.py log2.txt quantity 3000 1000 clocked epoch
 
 

@@ -40,8 +40,14 @@ params = [
     ], 0.2, 0, 0.2)
 ]
 
+# Inits for some parameters
+inits = [
+    "v = -65",
+    "u = v * b"
+]
+
 neurons = genNeurons(100, params) # neurons needs to be a generator of neurons and a generator of connections
 
 # Generate and print network
-network = Network(network_name, equations, "v >= 0.5", neurons, onReset, 10)
+network = Network(network_name, equations, "v >= 0.5", neurons, onReset, inits, 10, "clocked")
 network.printGraph()

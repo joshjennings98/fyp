@@ -1,0 +1,1277 @@
+<?xml version='1.0'?>
+<Graphs xmlns="https://poets-project.org/schemas/virtual-graph-schema-v3">
+	<GraphType xmlns="https://poets-project.org/schemas/virtual-graph-schema-v3" id="barrier_1000"> 
+		<Properties> 
+			<Scalar name="max_t" type="uint32_t"/> 
+		</Properties> 
+		<SharedCode>
+			<![CDATA[ 
+			#ifdef POETS_LEGACY_HAS_HANDLER_EXIT 
+			#define _do_handler_exit(code) handler_exit(code) 
+			#else 
+			#define _do_handler_exit(code) ((void)0) 
+			#endif
+
+			#define fake_handler_exit(code) \
+			{ \
+				if((code)==0){ \
+					handler_log(0, "_HANDLER_EXIT_SUCCESS_9be65737_"); \
+				}else{ \
+					handler_log(0, "_HANDLER_EXIT_FAIL_9be65737_"); \
+				} \
+				_do_handler_exit(code); \
+			}
+			uint32_t urng(uint32_t &state)
+			{
+				state = state*1664525+1013904223;
+				return state;
+			}
+
+			// Worlds crappiest gaussian
+			float grngOG(uint32_t &state)
+			{
+				uint32_t u=urng(state);
+				int32_t acc=0;
+				for(unsigned i=0;i<8;i++){
+				acc += u&0xf;
+				u=u>>4;
+				}
+				// a four-bit uniform has mean 7.5 and variance ((15-0+1)^2-1)/12 = 85/4
+				// sum of four uniforms has mean 8*7.5=60 and variance of 8*85/4=170
+				const float scale=0.07669649888473704; // == 1/sqrt(170)
+				return (acc-60.0f) * scale;
+			} 
+
+// NEW SHIT
+
+float const pi = 3.14159265358979323846;
+float const two_pi = 2.0 * pi;
+float const half_pi = 0.5 * pi;
+
+float cosineCalc1(float x)
+{
+    const float c1 = 0.9999932946;
+    const float c2 = -0.4999124376;
+    const float c3 = 0.0414877472;
+    const float c4 = -0.0012712095;
+
+    float x2;
+
+    x2 = x * x; // x**2
+
+    return (c1 + x2 * (c2 + x2 * (c3 + c4 * x2)));
+}
+
+float cosineCalc(float x)
+{
+    const float c1 = 0.99940307;
+    const float c2 = -0.49558072;
+    const float c3 = 0.03679168;
+
+    float x2;
+
+    x2 = x * x; // x**2
+
+    return (c1 + x2 * (c2 + x2 * c3));
+}
+
+// Driver for cosine function, simplifies maths
+float cosine(float x)
+{
+    //return cos(x);
+    int quad; // quadrant
+
+    
+    // float modulo to get rid of x > 2pi
+    while (x > two_pi)
+        x -= two_pi;
+
+    // cos -x = cos x
+    if (x < 0)
+        x = -x;
+    
+
+    quad = int(x/half_pi);
+    switch (quad) {
+        case 0:
+            return cosineCalc(x);
+        case 1:
+            return -cosineCalc(pi-x);
+        case 2:
+            return -cosineCalc(x-pi);
+        case 3:
+            return cosineCalc(two_pi-x);
+    }
+}
+
+// sine is just cosine shifted by half pi
+float sine(float x)
+{
+    return cosine(half_pi - x);
+}
+
+float logarithm(float x)
+{
+    union { float f; uint32_t i; } vx = { x };
+    union { uint32_t i; float f; } mx = { (vx.i & 0x007FFFFF) | 0x3f000000 };
+  
+    float y = vx.i;
+    y *= 1.1920928955078125e-7f;
+
+    return y - 124.22551499f
+           - 1.498030302f * mx.f 
+           - 1.72587999f / (0.3520887068f + mx.f);
+}
+
+float squareroot(float x)
+{
+   unsigned int i = *(unsigned int*) &x; 
+   // adjust bias
+   i  += 127 << 23;
+   // approximation of square root
+   i >>= 1; 
+   return *(float*) &i;
+}
+
+float grng(uint32_t &state)
+{
+	float mu = 0, sigma = 1;
+	static const float epsilon = 1.7e-37;
+	// static const double two_pi = 2.0*3.14159265358979323846;
+
+	thread_local float z1;
+	thread_local bool generate;
+	generate = !generate;
+
+	if (!generate)
+	   return z1 * sigma + mu;
+
+	float u1, u2;
+
+    do
+    {
+        u1 = (float)urng(state) / 4294967295.0f;
+        u2 = (float)urng(state) / 4294967295.0f;
+    }
+    while (u1 <= epsilon);
+
+	float z0;
+	z0 = squareroot(-2.0 * logarithm(u1)) * cosine(two_pi * u2);
+	z1 = squareroot(-2.0 * logarithm(u1)) * sine(two_pi * u2);
+
+	return z0 * sigma + mu;
+}
+
+			]]>
+		</SharedCode> 
+		<MessageTypes> 
+			<MessageType id="spike"> 
+				<Message>
+					<Scalar name="fired" type="int8_t"/> 
+				</Message>
+			</MessageType> 
+		</MessageTypes> 
+		<DeviceTypes>
+			<DeviceType id="neuron"> 
+				<Properties> 
+					<Scalar name="seed" type="uint32_t"/>
+					<Scalar name="refractory" type="uint32_t" default="0"/> 
+					<Scalar name="a" type="float" default="0.02"/>
+					<Scalar name="b" type="float" default="0.2"/>
+					<Scalar name="v" type="float" default="-62.51231218883935"/>
+					<Scalar name="u" type="float" default="7.93040395636523"/>
+					<Scalar name="Ir" type="float" default="5.0"/>
+					<Scalar name="fanin" type="uint32_t" default="1000"/> 
+				</Properties> 
+				<State> 
+					<Scalar name="rng" type="uint32_t"/> 
+					<Scalar name="t" type="uint32_t"/>
+					<Scalar name="finishRefractory" type="uint32_t"/>
+					<Scalar name="I" type="float"/> 
+					<Scalar name="Icount" type="uint32_t"/>
+					<Scalar name="fireValue" type="uint32_t"/> 
+					<Scalar name="a" type="float"/>
+					<Scalar name="b" type="float"/>
+					<Scalar name="v" type="float"/>
+					<Scalar name="u" type="float"/>
+					<Scalar name="Ir" type="float"/>
+				</State> 
+				<OnInit>
+					<![CDATA[
+					// Initialise state values
+					deviceState->a = deviceProperties->a; // Set initial a value
+					deviceState->b = deviceProperties->b; // Set initial b value
+					deviceState->v = deviceProperties->v; // Set initial v value
+					deviceState->u = deviceProperties->u; // Set initial u value
+					deviceState->Ir = deviceProperties->Ir; // Set initial Ir value
+			deviceState->v = -65; // Set initial v value
+					deviceState->u = deviceState->v*deviceState->b; // Set initial u value
+
+					deviceState->rng = deviceProperties->seed;
+					deviceState->I=deviceProperties->Ir * grng(deviceState->rng);
+					deviceState->Icount=0;
+					]]>
+				</OnInit> 
+				<InputPin name="input" messageTypeId="spike"> 
+					<Properties> 
+					<Scalar name="weight" type="float"/> 
+					</Properties> 
+					<OnReceive>
+						<![CDATA[ 
+							deviceState->Icount++;
+							deviceState->I += edgeProperties->weight;
+						]]>
+					</OnReceive> 
+				</InputPin> 
+				<OnHardwareIdle>
+					<![CDATA[
+										float &a = deviceState->a; // Assign a
+						float &b = deviceState->b; // Assign b
+						float &v = deviceState->v; // Assign v
+						float &u = deviceState->u; // Assign u
+						float &Ir = deviceState->Ir; // Assign Ir 
+						float &I=deviceState->I;
+										v += 0.04 * v * v + 5 * v + 140 - u + I;
+							u += a * (b * v - u);
+						deviceState->t++;
+						bool fire = v >= 30;
+						if(fire){
+							 handler_log(1, "FIRE! %i", deviceState->t);
+							// handler_log(1, "v = %f", deviceState->v);
+												v = deviceProperties->v;
+							u += deviceProperties->u;
+						}
+						deviceState->fireValue=fire;
+						deviceState->I=deviceProperties->Ir * grng(deviceState->rng);
+						deviceState->Icount=0;
+					]]>
+				</OnHardwareIdle>
+				<OutputPin name="fire" messageTypeId="spike" indexed="false">
+				<OnSend>
+					<![CDATA[
+						if(deviceState->t > graphProperties->max_t){
+							*doSend=false;
+							fake_handler_exit(0);
+						}
+						//// handler_log(1, "t = %u", deviceState->t);
+						deviceState->fireValue=false;
+					]]>
+				</OnSend>
+			</OutputPin>
+				<ReadyToSend>
+					<![CDATA[ 
+						*readyToSend=0;
+						if(deviceState->fireValue){
+							*readyToSend |= RTS_FLAG_fire;
+						}
+					]]>
+				</ReadyToSend> 
+			</DeviceType>
+		</DeviceTypes> 
+	</GraphType> 
+	<GraphInstance id="barrier_1000_output" graphTypeId="barrier_1000"> 
+		<Properties> 
+			"max_t":1000
+		</Properties>
+		<DeviceInstances>					<DevI id="n_0" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.10922590762275,"u":7.847047514437977,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1052968588</P></DevI>
+			<DevI id="n_1" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.88485811992224,"u":5.8572492802620015,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1925527091</P></DevI>
+			<DevI id="n_2" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.69679376580848,"u":4.25471888450889,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2462768976</P></DevI>
+			<DevI id="n_3" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.134319543707825,"u":7.292202475489083,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1354044933</P></DevI>
+			<DevI id="n_4" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.05627873826772,"u":5.185987903619945,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2871057736</P></DevI>
+			<DevI id="n_5" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.46834240272492,"u":7.8024229057516825,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2826406995</P></DevI>
+			<DevI id="n_6" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.70451694753926,"u":7.967770771052147,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1443564729</P></DevI>
+			<DevI id="n_7" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.078256359441596,"u":7.999012483734707,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3904783602</P></DevI>
+			<DevI id="n_8" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.05884868445131,"u":5.6186702339668475,"Ir":5.0,"fanin":1000,"refractory":0,"seed":762742104</P></DevI>
+			<DevI id="n_9" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.52533059905784,"u":7.9883153348531035,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1805420939</P></DevI>
+			<DevI id="n_10" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.108970533582216,"u":7.952699182234727,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2301247859</P></DevI>
+			<DevI id="n_11" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.54924727854426,"u":2.1745338454654535,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1438086238</P></DevI>
+			<DevI id="n_12" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.89563367335071,"u":3.312535408591165,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2916505941</P></DevI>
+			<DevI id="n_13" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.90785691511267,"u":3.365114483988199,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2308701180</P></DevI>
+			<DevI id="n_14" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.419018171681174,"u":4.385705678912721,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4187290599</P></DevI>
+			<DevI id="n_15" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.34528276077267,"u":7.104883409903783,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2870958601</P></DevI>
+			<DevI id="n_16" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.78234749823549,"u":2.2324344778235776,"Ir":5.0,"fanin":1000,"refractory":0,"seed":121367356</P></DevI>
+			<DevI id="n_17" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.02596310058215,"u":7.886774429345569,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1584845280</P></DevI>
+			<DevI id="n_18" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.89226774366628,"u":6.4619528266976864,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1710127908</P></DevI>
+			<DevI id="n_19" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.41730418975907,"u":7.761200069231677,"Ir":5.0,"fanin":1000,"refractory":0,"seed":833925005</P></DevI>
+			<DevI id="n_20" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.4923967800078,"u":7.301723622474272,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2294300313</P></DevI>
+			<DevI id="n_21" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.994224106102266,"u":4.378050765929386,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2087869318</P></DevI>
+			<DevI id="n_22" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.2311129813386,"u":7.904583313292108,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2123751484</P></DevI>
+			<DevI id="n_23" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.95875797804261,"u":3.545385930710207,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1807157630</P></DevI>
+			<DevI id="n_24" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.23492250600459,"u":4.591491604438988,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1781240437</P></DevI>
+			<DevI id="n_25" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.54126171895128,"u":6.124909611154303,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1383984549</P></DevI>
+			<DevI id="n_26" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.736970051219444,"u":7.9307064769300935,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1394554990</P></DevI>
+			<DevI id="n_27" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.106264974376465,"u":6.040181752752941,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1181207361</P></DevI>
+			<DevI id="n_28" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.99405255019344,"u":5.3847788405267725,"Ir":5.0,"fanin":1000,"refractory":0,"seed":183653117</P></DevI>
+			<DevI id="n_29" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.63430134910688,"u":3.2310174254216184,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4214709655</P></DevI>
+			<DevI id="n_30" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.90006066891325,"u":7.976460656368523,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1786949962</P></DevI>
+			<DevI id="n_31" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.29770199731116,"u":7.837105993663632,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3606219145</P></DevI>
+			<DevI id="n_32" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.723177158298846,"u":7.521342054473619,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4034659025</P></DevI>
+			<DevI id="n_33" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.81535795641238,"u":6.05054773954154,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1531010869</P></DevI>
+			<DevI id="n_34" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.32819080590404,"u":7.650612479933398,"Ir":5.0,"fanin":1000,"refractory":0,"seed":315422061</P></DevI>
+			<DevI id="n_35" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.540758623537904,"u":6.205220997875384,"Ir":5.0,"fanin":1000,"refractory":0,"seed":798554464</P></DevI>
+			<DevI id="n_36" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.86975048530652,"u":7.730307735030121,"Ir":5.0,"fanin":1000,"refractory":0,"seed":656591728</P></DevI>
+			<DevI id="n_37" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.417968090473714,"u":6.866720300585166,"Ir":5.0,"fanin":1000,"refractory":0,"seed":182942442</P></DevI>
+			<DevI id="n_38" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.50666782604215,"u":7.904776053845227,"Ir":5.0,"fanin":1000,"refractory":0,"seed":74829374</P></DevI>
+			<DevI id="n_39" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.3170765760681,"u":2.736484093785002,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3234152243</P></DevI>
+			<DevI id="n_40" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.89723573293452,"u":5.31667951251069,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2040814551</P></DevI>
+			<DevI id="n_41" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.666120939631995,"u":7.955307012682236,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1965404113</P></DevI>
+			<DevI id="n_42" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.94667205068167,"u":7.861927274421452,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2870539734</P></DevI>
+			<DevI id="n_43" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.92136553810081,"u":3.9959754769991696,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2884439937</P></DevI>
+			<DevI id="n_44" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.392316017445445,"u":7.0365813960277706,"Ir":5.0,"fanin":1000,"refractory":0,"seed":277467577</P></DevI>
+			<DevI id="n_45" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.76519574638175,"u":4.230485891657229,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1579452166</P></DevI>
+			<DevI id="n_46" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.4680459267409,"u":5.82085057358721,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3259242866</P></DevI>
+			<DevI id="n_47" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.232220348832264,"u":5.7673308861056665,"Ir":5.0,"fanin":1000,"refractory":0,"seed":853519359</P></DevI>
+			<DevI id="n_48" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.36751664002789,"u":7.2298678141103805,"Ir":5.0,"fanin":1000,"refractory":0,"seed":701607390</P></DevI>
+			<DevI id="n_49" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.236019942207975,"u":3.130034667150679,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1569896890</P></DevI>
+			<DevI id="n_50" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.51519056725977,"u":7.561139682781306,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1094577023</P></DevI>
+			<DevI id="n_51" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.213926744890955,"u":6.3812202227224635,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2297527049</P></DevI>
+			<DevI id="n_52" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.41805342814631,"u":5.557843214159993,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1009218788</P></DevI>
+			<DevI id="n_53" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.84720849457112,"u":4.46704442344652,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2895186489</P></DevI>
+			<DevI id="n_54" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.9999981792648,"u":7.736266558778804,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3638584909</P></DevI>
+			<DevI id="n_55" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.57589359172118,"u":3.3119041015572375,"Ir":5.0,"fanin":1000,"refractory":0,"seed":102337762</P></DevI>
+			<DevI id="n_56" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.15343302333322,"u":5.55689546407228,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1332867823</P></DevI>
+			<DevI id="n_57" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.284127824863866,"u":7.996918915539138,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4128208369</P></DevI>
+			<DevI id="n_58" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.31959065446251,"u":3.4992095178684144,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2860762595</P></DevI>
+			<DevI id="n_59" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.94097237851426,"u":5.99348100284608,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1568211007</P></DevI>
+			<DevI id="n_60" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.87933326477992,"u":7.989043994648333,"Ir":5.0,"fanin":1000,"refractory":0,"seed":134154539</P></DevI>
+			<DevI id="n_61" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.78236546575186,"u":7.941654531073273,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3792251184</P></DevI>
+			<DevI id="n_62" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.50073247982367,"u":5.403380147414326,"Ir":5.0,"fanin":1000,"refractory":0,"seed":446387419</P></DevI>
+			<DevI id="n_63" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.33041134751866,"u":7.889124185309176,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1130408596</P></DevI>
+			<DevI id="n_64" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.800165241724386,"u":5.37991864558664,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3973010848</P></DevI>
+			<DevI id="n_65" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.68884808749674,"u":4.544501084269069,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2814260897</P></DevI>
+			<DevI id="n_66" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.552625146175764,"u":7.171196900157386,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1454381707</P></DevI>
+			<DevI id="n_67" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.85033233981734,"u":6.554517118028571,"Ir":5.0,"fanin":1000,"refractory":0,"seed":312834194</P></DevI>
+			<DevI id="n_68" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.152165977729545,"u":4.95136570295805,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2255787021</P></DevI>
+			<DevI id="n_69" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.01566425632133,"u":6.9603733659980875,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4166487069</P></DevI>
+			<DevI id="n_70" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.16966401995282,"u":4.813139683462862,"Ir":5.0,"fanin":1000,"refractory":0,"seed":617236537</P></DevI>
+			<DevI id="n_71" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.22552484450269,"u":7.8321835751384965,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4221766712</P></DevI>
+			<DevI id="n_72" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.63605183863099,"u":7.264235101924208,"Ir":5.0,"fanin":1000,"refractory":0,"seed":965523218</P></DevI>
+			<DevI id="n_73" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.652839607815444,"u":7.391040323882113,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2994510999</P></DevI>
+			<DevI id="n_74" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.99686023541152,"u":7.991333325820093,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3342822771</P></DevI>
+			<DevI id="n_75" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.198695381424486,"u":6.104397199334547,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2985808938</P></DevI>
+			<DevI id="n_76" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.7593181169796,"u":6.791552217207231,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3598869344</P></DevI>
+			<DevI id="n_77" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.76549578160633,"u":2.5337729380195873,"Ir":5.0,"fanin":1000,"refractory":0,"seed":307061025</P></DevI>
+			<DevI id="n_78" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.32274189787757,"u":2.2754787699218433,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1805753677</P></DevI>
+			<DevI id="n_79" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.46737927145564,"u":7.268816420868577,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2097243072</P></DevI>
+			<DevI id="n_80" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.79583587825025,"u":7.936947331617156,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1581358829</P></DevI>
+			<DevI id="n_81" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.325559606249655,"u":5.501475201585757,"Ir":5.0,"fanin":1000,"refractory":0,"seed":173412079</P></DevI>
+			<DevI id="n_82" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.55661784537531,"u":7.075291111888557,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1579605069</P></DevI>
+			<DevI id="n_83" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.78004696385172,"u":6.815090218514859,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1232669652</P></DevI>
+			<DevI id="n_84" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.51017874056694,"u":7.2193788410652076,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2644127488</P></DevI>
+			<DevI id="n_85" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.13078744347591,"u":6.641307504592328,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3335303557</P></DevI>
+			<DevI id="n_86" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.358382288400065,"u":5.645417568024372,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3923467998</P></DevI>
+			<DevI id="n_87" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.742830742128014,"u":7.9417347348453085,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2278017797</P></DevI>
+			<DevI id="n_88" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.7303628153355,"u":4.255930961332274,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2608753150</P></DevI>
+			<DevI id="n_89" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.93975424179994,"u":3.0527648092937136,"Ir":5.0,"fanin":1000,"refractory":0,"seed":271344245</P></DevI>
+			<DevI id="n_90" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.72714304638671,"u":7.830180240944641,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3429020787</P></DevI>
+			<DevI id="n_91" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.920816120214944,"u":7.6770369225599815,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3724953874</P></DevI>
+			<DevI id="n_92" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.3981189773109,"u":7.996021998677805,"Ir":5.0,"fanin":1000,"refractory":0,"seed":692662257</P></DevI>
+			<DevI id="n_93" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.189389422873916,"u":7.958096378076969,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2822099761</P></DevI>
+			<DevI id="n_94" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.63602210606967,"u":5.291285347634472,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2499244268</P></DevI>
+			<DevI id="n_95" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.31769204561514,"u":7.419997694363116,"Ir":5.0,"fanin":1000,"refractory":0,"seed":617228440</P></DevI>
+			<DevI id="n_96" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.62402902330107,"u":6.465181379609136,"Ir":5.0,"fanin":1000,"refractory":0,"seed":847576468</P></DevI>
+			<DevI id="n_97" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.95348633413517,"u":7.915458922608145,"Ir":5.0,"fanin":1000,"refractory":0,"seed":70054900</P></DevI>
+			<DevI id="n_98" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.29735583006208,"u":7.678995489213075,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2664642350</P></DevI>
+			<DevI id="n_99" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.90874995463263,"u":7.568245084325157,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4146208330</P></DevI>
+			<DevI id="n_100" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.99882483852465,"u":4.960366371634707,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4196700753</P></DevI>
+			<DevI id="n_101" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.17831331062474,"u":6.859091341817707,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2736363690</P></DevI>
+			<DevI id="n_102" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.08208660461476,"u":4.638844162160465,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2991752440</P></DevI>
+			<DevI id="n_103" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.13339164999158,"u":7.680430185108087,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1093050486</P></DevI>
+			<DevI id="n_104" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.99873256535619,"u":4.94400271384556,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1663866982</P></DevI>
+			<DevI id="n_105" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.16146930163341,"u":7.7429381641158725,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2355374598</P></DevI>
+			<DevI id="n_106" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.86129334384094,"u":7.5994554609353635,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3017031251</P></DevI>
+			<DevI id="n_107" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.27396176488051,"u":2.1933349220113048,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2572980032</P></DevI>
+			<DevI id="n_108" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.46090725181976,"u":4.9645802494283195,"Ir":5.0,"fanin":1000,"refractory":0,"seed":232601122</P></DevI>
+			<DevI id="n_109" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.899482440840686,"u":6.550385540618294,"Ir":5.0,"fanin":1000,"refractory":0,"seed":683725566</P></DevI>
+			<DevI id="n_110" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.85314220987295,"u":7.033698039218772,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1801226675</P></DevI>
+			<DevI id="n_111" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.41511804140465,"u":7.890451253096675,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1573834869</P></DevI>
+			<DevI id="n_112" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.20620691205734,"u":6.227903760988002,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1027229335</P></DevI>
+			<DevI id="n_113" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.84106231965991,"u":6.533860052355211,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3372521900</P></DevI>
+			<DevI id="n_114" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.44113127368861,"u":7.997630500883106,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2691119616</P></DevI>
+			<DevI id="n_115" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.42253886663427,"u":7.07668790653065,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2672341528</P></DevI>
+			<DevI id="n_116" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.112146136869136,"u":3.3355585761675766,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3697213445</P></DevI>
+			<DevI id="n_117" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.7057392245122,"u":7.9041584177591275,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2722453468</P></DevI>
+			<DevI id="n_118" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.122026808311446,"u":7.9810670808926885,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2424856208</P></DevI>
+			<DevI id="n_119" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.10029653192877,"u":4.630859600694892,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1769285748</P></DevI>
+			<DevI id="n_120" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.38383163167647,"u":7.344325335866017,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2689143495</P></DevI>
+			<DevI id="n_121" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.62456541358785,"u":6.517539757958795,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2747734991</P></DevI>
+			<DevI id="n_122" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.67881649997849,"u":6.541599914661042,"Ir":5.0,"fanin":1000,"refractory":0,"seed":980455463</P></DevI>
+			<DevI id="n_123" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.08097093030851,"u":7.8877152237902495,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3215509510</P></DevI>
+			<DevI id="n_124" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.870675133555935,"u":5.893250179445246,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2869617008</P></DevI>
+			<DevI id="n_125" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.252593674989136,"u":7.75086001383559,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3905020797</P></DevI>
+			<DevI id="n_126" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.00155550326118,"u":2.2515806868732717,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1818519939</P></DevI>
+			<DevI id="n_127" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.13217106201586,"u":5.960127403155917,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2745287555</P></DevI>
+			<DevI id="n_128" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.32375104014338,"u":7.997959337418289,"Ir":5.0,"fanin":1000,"refractory":0,"seed":244903981</P></DevI>
+			<DevI id="n_129" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.86345355829903,"u":7.323384326776271,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1057855525</P></DevI>
+			<DevI id="n_130" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.29128126288283,"u":7.348256874160056,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4095681587</P></DevI>
+			<DevI id="n_131" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.260772857102786,"u":7.6605197228436515,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3761001816</P></DevI>
+			<DevI id="n_132" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.732402262247234,"u":3.956012384561604,"Ir":5.0,"fanin":1000,"refractory":0,"seed":704675416</P></DevI>
+			<DevI id="n_133" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.15850051943958,"u":7.945879773986806,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3773422124</P></DevI>
+			<DevI id="n_134" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.99701354072124,"u":7.975835462950756,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2218074005</P></DevI>
+			<DevI id="n_135" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.46143535615977,"u":3.560291692248094,"Ir":5.0,"fanin":1000,"refractory":0,"seed":166286558</P></DevI>
+			<DevI id="n_136" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.82518045439777,"u":3.137534420224166,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2849412482</P></DevI>
+			<DevI id="n_137" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.6504302545693,"u":2.5442496742010787,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2989725414</P></DevI>
+			<DevI id="n_138" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.788349500499734,"u":6.801768108955891,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2153422330</P></DevI>
+			<DevI id="n_139" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.379633520035895,"u":6.713040928680789,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3874852556</P></DevI>
+			<DevI id="n_140" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.65250713398353,"u":6.0146755264200475,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2783105464</P></DevI>
+			<DevI id="n_141" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.5066264926281,"u":7.6307515336845535,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1329190481</P></DevI>
+			<DevI id="n_142" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.54306460931155,"u":7.525910680078199,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3149031163</P></DevI>
+			<DevI id="n_143" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.00294896392414,"u":7.884410129402885,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4110549646</P></DevI>
+			<DevI id="n_144" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.356140632500015,"u":7.956507130072929,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4005850572</P></DevI>
+			<DevI id="n_145" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.92894042167184,"u":7.475520459836341,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2252458471</P></DevI>
+			<DevI id="n_146" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.028208284228384,"u":7.588353161512925,"Ir":5.0,"fanin":1000,"refractory":0,"seed":924789176</P></DevI>
+			<DevI id="n_147" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.0821514187692,"u":6.42566334426367,"Ir":5.0,"fanin":1000,"refractory":0,"seed":792399284</P></DevI>
+			<DevI id="n_148" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.1688560966251,"u":2.5732196748234166,"Ir":5.0,"fanin":1000,"refractory":0,"seed":33447276</P></DevI>
+			<DevI id="n_149" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.3061722888591,"u":6.848631721505981,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3842237758</P></DevI>
+			<DevI id="n_150" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.23638994529031,"u":3.6120181132214615,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4234803055</P></DevI>
+			<DevI id="n_151" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.65819621715782,"u":6.020611481095311,"Ir":5.0,"fanin":1000,"refractory":0,"seed":723020835</P></DevI>
+			<DevI id="n_152" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.68347723847067,"u":2.440117677770706,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2225650141</P></DevI>
+			<DevI id="n_153" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.75828854340152,"u":6.622569019032053,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2198173735</P></DevI>
+			<DevI id="n_154" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.44600395769555,"u":7.996318109608158,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1107070701</P></DevI>
+			<DevI id="n_155" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.02010601913646,"u":4.683733887599557,"Ir":5.0,"fanin":1000,"refractory":0,"seed":744444330</P></DevI>
+			<DevI id="n_156" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.256924943827926,"u":7.028302708925839,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2511530953</P></DevI>
+			<DevI id="n_157" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.12346811106316,"u":7.173706025611184,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1755020089</P></DevI>
+			<DevI id="n_158" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.8849494572148,"u":5.8576455254278965,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1950095383</P></DevI>
+			<DevI id="n_159" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.163132237315686,"u":5.818862482979564,"Ir":5.0,"fanin":1000,"refractory":0,"seed":848921162</P></DevI>
+			<DevI id="n_160" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.826821208323395,"u":4.072133804565386,"Ir":5.0,"fanin":1000,"refractory":0,"seed":744877309</P></DevI>
+			<DevI id="n_161" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.62585081020394,"u":7.789917983340765,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1119208504</P></DevI>
+			<DevI id="n_162" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.33011830956967,"u":7.006691127717859,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3666135856</P></DevI>
+			<DevI id="n_163" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.36238675395149,"u":2.491810846533874,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3334161501</P></DevI>
+			<DevI id="n_164" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.22723838655368,"u":7.209248095695114,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4006452927</P></DevI>
+			<DevI id="n_165" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.793422980039324,"u":7.5758983448807165,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2236923932</P></DevI>
+			<DevI id="n_166" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.63881687509256,"u":7.51554011541236,"Ir":5.0,"fanin":1000,"refractory":0,"seed":257134276</P></DevI>
+			<DevI id="n_167" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.661812639926005,"u":6.243506206364689,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2625299763</P></DevI>
+			<DevI id="n_168" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.9449419606247,"u":7.323143937301859,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2397898199</P></DevI>
+			<DevI id="n_169" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.99313073979727,"u":2.285635508510368,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1161118493</P></DevI>
+			<DevI id="n_170" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.285141568522086,"u":6.3804273566895215,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1528753906</P></DevI>
+			<DevI id="n_171" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.011384423341205,"u":5.851659333814043,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4196465298</P></DevI>
+			<DevI id="n_172" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.31830776684489,"u":5.332609958048655,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2455195779</P></DevI>
+			<DevI id="n_173" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.35265104445607,"u":5.7402045228363585,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2121486713</P></DevI>
+			<DevI id="n_174" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.7668966917006,"u":3.170618992058264,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2120192842</P></DevI>
+			<DevI id="n_175" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.52739727405778,"u":6.536795660087989,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3668837519</P></DevI>
+			<DevI id="n_176" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.05075195539436,"u":5.337899517447679,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1026020775</P></DevI>
+			<DevI id="n_177" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.51638470264515,"u":5.502211967079617,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4246962231</P></DevI>
+			<DevI id="n_178" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.98039646928426,"u":4.81472695781742,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1637030712</P></DevI>
+			<DevI id="n_179" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.23791313688241,"u":7.663606663996556,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2301801519</P></DevI>
+			<DevI id="n_180" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.88220689623851,"u":7.857106439124078,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1760873451</P></DevI>
+			<DevI id="n_181" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.0596721621588,"u":7.998075554164605,"Ir":5.0,"fanin":1000,"refractory":0,"seed":813298143</P></DevI>
+			<DevI id="n_182" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.89880808937704,"u":7.474313868210181,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1973311308</P></DevI>
+			<DevI id="n_183" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.343651029807916,"u":4.678342744322121,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1821057059</P></DevI>
+			<DevI id="n_184" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.13895861785593,"u":7.248323623062891,"Ir":5.0,"fanin":1000,"refractory":0,"seed":355369333</P></DevI>
+			<DevI id="n_185" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.49239297922579,"u":6.557837810735466,"Ir":5.0,"fanin":1000,"refractory":0,"seed":131245084</P></DevI>
+			<DevI id="n_186" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.88226099607848,"u":6.781577054977833,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2015649758</P></DevI>
+			<DevI id="n_187" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.51233646386587,"u":7.753929605003797,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2371020745</P></DevI>
+			<DevI id="n_188" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.613837845502616,"u":3.4389408565865054,"Ir":5.0,"fanin":1000,"refractory":0,"seed":792360663</P></DevI>
+			<DevI id="n_189" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.92202890047096,"u":7.431777201569383,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3984093808</P></DevI>
+			<DevI id="n_190" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.98476911577126,"u":3.0296456277568815,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3996032513</P></DevI>
+			<DevI id="n_191" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.544418371779614,"u":7.42692990933671,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3634995404</P></DevI>
+			<DevI id="n_192" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.89066209822325,"u":3.8976146516867276,"Ir":5.0,"fanin":1000,"refractory":0,"seed":526566663</P></DevI>
+			<DevI id="n_193" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.95801392895339,"u":4.432380055273937,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3473250632</P></DevI>
+			<DevI id="n_194" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.99795706727659,"u":5.19131954232158,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1602505363</P></DevI>
+			<DevI id="n_195" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.74425760288282,"u":6.389207392855613,"Ir":5.0,"fanin":1000,"refractory":0,"seed":213768683</P></DevI>
+			<DevI id="n_196" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.61854494580267,"u":7.295930258639037,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2650370571</P></DevI>
+			<DevI id="n_197" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.43637975857553,"u":6.3257964268995135,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1534106360</P></DevI>
+			<DevI id="n_198" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.247203721654195,"u":7.649649011994321,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2903287351</P></DevI>
+			<DevI id="n_199" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.97117484370467,"u":5.5183191129038835,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1953478863</P></DevI>
+			<DevI id="n_200" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.19047965288307,"u":3.274281507381117,"Ir":5.0,"fanin":1000,"refractory":0,"seed":557950440</P></DevI>
+			<DevI id="n_201" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.745865727549095,"u":5.748861859491836,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3840755538</P></DevI>
+			<DevI id="n_202" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.537268391318904,"u":7.651507594949087,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3242216593</P></DevI>
+			<DevI id="n_203" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.37720170329604,"u":7.978807068402077,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3909737313</P></DevI>
+			<DevI id="n_204" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.5147922892379,"u":7.99269885239061,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2284490590</P></DevI>
+			<DevI id="n_205" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.50173276791679,"u":7.652845950286677,"Ir":5.0,"fanin":1000,"refractory":0,"seed":542029317</P></DevI>
+			<DevI id="n_206" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.5446110077605,"u":3.478307560316389,"Ir":5.0,"fanin":1000,"refractory":0,"seed":707867468</P></DevI>
+			<DevI id="n_207" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.25165301464128,"u":7.1959222621515915,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1438235194</P></DevI>
+			<DevI id="n_208" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.82552432693586,"u":7.369335286114093,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2420149476</P></DevI>
+			<DevI id="n_209" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.49511321537817,"u":2.7816016774249377,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3411401211</P></DevI>
+			<DevI id="n_210" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.58314885356218,"u":7.465176511323427,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3722006662</P></DevI>
+			<DevI id="n_211" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.07422951015397,"u":6.644478132856638,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4142601994</P></DevI>
+			<DevI id="n_212" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.95315544811467,"u":7.990702908998591,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4157860067</P></DevI>
+			<DevI id="n_213" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.37880099629005,"u":7.6155704328852805,"Ir":5.0,"fanin":1000,"refractory":0,"seed":10789537</P></DevI>
+			<DevI id="n_214" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.81584008934874,"u":6.804134901838668,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1031145672</P></DevI>
+			<DevI id="n_215" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.684265288556425,"u":6.86883606111053,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2857977444</P></DevI>
+			<DevI id="n_216" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.94079304991515,"u":5.829243165604812,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1365277655</P></DevI>
+			<DevI id="n_217" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.69905878055181,"u":7.874670665416906,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2103176828</P></DevI>
+			<DevI id="n_218" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.08471277391159,"u":6.667875474979692,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2439880372</P></DevI>
+			<DevI id="n_219" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.38590200325172,"u":4.527702594405636,"Ir":5.0,"fanin":1000,"refractory":0,"seed":946772568</P></DevI>
+			<DevI id="n_220" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.01983821175072,"u":6.628169867377567,"Ir":5.0,"fanin":1000,"refractory":0,"seed":943005417</P></DevI>
+			<DevI id="n_221" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.70619748876109,"u":6.524462872893172,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1235642490</P></DevI>
+			<DevI id="n_222" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.3313866951627,"u":7.97013102962248,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2965541838</P></DevI>
+			<DevI id="n_223" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.31433619223202,"u":7.871544163068863,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3232859759</P></DevI>
+			<DevI id="n_224" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.815931651592855,"u":3.4530258599037564,"Ir":5.0,"fanin":1000,"refractory":0,"seed":745459762</P></DevI>
+			<DevI id="n_225" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.98189152783543,"u":7.31446946464014,"Ir":5.0,"fanin":1000,"refractory":0,"seed":503156337</P></DevI>
+			<DevI id="n_226" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.29620275378596,"u":7.947925024451279,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1699437747</P></DevI>
+			<DevI id="n_227" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.40544916620784,"u":7.959520824039392,"Ir":5.0,"fanin":1000,"refractory":0,"seed":975300376</P></DevI>
+			<DevI id="n_228" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.9738086407267,"u":7.1544670768393175,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3778088507</P></DevI>
+			<DevI id="n_229" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.705153690285925,"u":5.940623810285603,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3264361621</P></DevI>
+			<DevI id="n_230" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.330166944099915,"u":7.081055214359654,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1110360378</P></DevI>
+			<DevI id="n_231" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.60637445977282,"u":7.917861442423306,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2293530540</P></DevI>
+			<DevI id="n_232" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.22206986150351,"u":7.305984977612126,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3323639549</P></DevI>
+			<DevI id="n_233" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.255528131520485,"u":4.61162315841624,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2557972222</P></DevI>
+			<DevI id="n_234" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.882192903394895,"u":7.682793016008754,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2988213297</P></DevI>
+			<DevI id="n_235" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.65706525700583,"u":4.893612267901867,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3105012666</P></DevI>
+			<DevI id="n_236" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.381838358015855,"u":7.639056964806936,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2709828596</P></DevI>
+			<DevI id="n_237" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.993811085835056,"u":7.538056171280652,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1092119231</P></DevI>
+			<DevI id="n_238" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.71525522040891,"u":6.311395788057613,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2772328530</P></DevI>
+			<DevI id="n_239" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.88428870048141,"u":6.649738398201286,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2773490471</P></DevI>
+			<DevI id="n_240" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.05355550908204,"u":7.715767355642453,"Ir":5.0,"fanin":1000,"refractory":0,"seed":125263649</P></DevI>
+			<DevI id="n_241" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.74116051012506,"u":5.105664212143451,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1393006153</P></DevI>
+			<DevI id="n_242" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.101996100481635,"u":5.22351143858994,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3936943091</P></DevI>
+			<DevI id="n_243" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.34101466684034,"u":7.97782566130758,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2852913750</P></DevI>
+			<DevI id="n_244" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.59605006888941,"u":5.767638865387236,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2313342905</P></DevI>
+			<DevI id="n_245" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.58452901711864,"u":7.883838475262636,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3405558424</P></DevI>
+			<DevI id="n_246" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.74377030355251,"u":3.7921228570523384,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3427516143</P></DevI>
+			<DevI id="n_247" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.99214509691721,"u":5.730348445930598,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3399741277</P></DevI>
+			<DevI id="n_248" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.40883761220071,"u":7.99943906349066,"Ir":5.0,"fanin":1000,"refractory":0,"seed":967501316</P></DevI>
+			<DevI id="n_249" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.859464949424094,"u":7.80090602444674,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2737915211</P></DevI>
+			<DevI id="n_250" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.99081962763931,"u":2.2111239892675254,"Ir":5.0,"fanin":1000,"refractory":0,"seed":880314667</P></DevI>
+			<DevI id="n_251" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.00012986129668,"u":4.359594371836366,"Ir":5.0,"fanin":1000,"refractory":0,"seed":950812401</P></DevI>
+			<DevI id="n_252" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.02961329504952,"u":5.46449219869344,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2509573763</P></DevI>
+			<DevI id="n_253" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.1163074757431,"u":3.3682500982690318,"Ir":5.0,"fanin":1000,"refractory":0,"seed":217258921</P></DevI>
+			<DevI id="n_254" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.474570799945496,"u":4.7934432252199155,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3250938047</P></DevI>
+			<DevI id="n_255" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.24172673210342,"u":6.793325461784299,"Ir":5.0,"fanin":1000,"refractory":0,"seed":417537273</P></DevI>
+			<DevI id="n_256" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.97821925340824,"u":7.929527377956642,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3872006855</P></DevI>
+			<DevI id="n_257" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.10334941907809,"u":7.853677237710481,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3045949766</P></DevI>
+			<DevI id="n_258" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.301876505416345,"u":7.942161670562753,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3466890691</P></DevI>
+			<DevI id="n_259" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.53517632179005,"u":5.305232064160203,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3174704784</P></DevI>
+			<DevI id="n_260" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.05842452512085,"u":4.885014438472293,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1990546101</P></DevI>
+			<DevI id="n_261" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.7693898019042,"u":7.021407356823008,"Ir":5.0,"fanin":1000,"refractory":0,"seed":293161689</P></DevI>
+			<DevI id="n_262" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.76454683220617,"u":6.65591282273774,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2810057407</P></DevI>
+			<DevI id="n_263" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.11958733651407,"u":7.66168409682355,"Ir":5.0,"fanin":1000,"refractory":0,"seed":591354467</P></DevI>
+			<DevI id="n_264" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.65596606912703,"u":7.96461709970855,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2159238325</P></DevI>
+			<DevI id="n_265" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.43753031921102,"u":6.261477278896585,"Ir":5.0,"fanin":1000,"refractory":0,"seed":263452733</P></DevI>
+			<DevI id="n_266" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.06633115991632,"u":4.8157400704511115,"Ir":5.0,"fanin":1000,"refractory":0,"seed":787549527</P></DevI>
+			<DevI id="n_267" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.710767361497574,"u":7.857309807969087,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4049616967</P></DevI>
+			<DevI id="n_268" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.7064711620649,"u":7.999160049164398,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3554964234</P></DevI>
+			<DevI id="n_269" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.67594190131558,"u":7.300301161346295,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2975927641</P></DevI>
+			<DevI id="n_270" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.53679219719736,"u":4.232698668401731,"Ir":5.0,"fanin":1000,"refractory":0,"seed":144117651</P></DevI>
+			<DevI id="n_271" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.541664983321844,"u":7.9288425869715145,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2488632417</P></DevI>
+			<DevI id="n_272" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.52677209583452,"u":7.985313885051124,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3613317891</P></DevI>
+			<DevI id="n_273" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.71001113919501,"u":6.528606712920022,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1162392904</P></DevI>
+			<DevI id="n_274" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.3187650366066,"u":3.393170210104824,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3264821715</P></DevI>
+			<DevI id="n_275" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.4879883998095,"u":6.658135452157111,"Ir":5.0,"fanin":1000,"refractory":0,"seed":399229598</P></DevI>
+			<DevI id="n_276" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.78705531236564,"u":7.129044949436405,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1728989282</P></DevI>
+			<DevI id="n_277" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.42589773830336,"u":7.97684157478361,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3312905497</P></DevI>
+			<DevI id="n_278" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.01226991736776,"u":7.044322829368062,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2592905750</P></DevI>
+			<DevI id="n_279" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.57792541161429,"u":6.0466408718301095,"Ir":5.0,"fanin":1000,"refractory":0,"seed":138863826</P></DevI>
+			<DevI id="n_280" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.608585171664004,"u":7.41788679467716,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3181175903</P></DevI>
+			<DevI id="n_281" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.58135586248906,"u":5.771619356083419,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3882215154</P></DevI>
+			<DevI id="n_282" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.35137312055419,"u":2.54268650317787,"Ir":5.0,"fanin":1000,"refractory":0,"seed":133212043</P></DevI>
+			<DevI id="n_283" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.03291437436351,"u":3.3622035755353625,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1880208607</P></DevI>
+			<DevI id="n_284" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.816058322424844,"u":7.966851388762911,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2949649612</P></DevI>
+			<DevI id="n_285" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.4888347245918,"u":7.710745833292277,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1709140226</P></DevI>
+			<DevI id="n_286" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.24511506933356,"u":7.769979056382566,"Ir":5.0,"fanin":1000,"refractory":0,"seed":694720171</P></DevI>
+			<DevI id="n_287" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.99304730472834,"u":3.0825619654770806,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3084770639</P></DevI>
+			<DevI id="n_288" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.76079940954344,"u":3.4378913357670777,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3897371171</P></DevI>
+			<DevI id="n_289" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.67501335535803,"u":7.478938161917438,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3748021605</P></DevI>
+			<DevI id="n_290" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.97902168089837,"u":6.268049401139192,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2954528165</P></DevI>
+			<DevI id="n_291" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.402959357466514,"u":7.100044697292311,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2848039651</P></DevI>
+			<DevI id="n_292" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.49128942814379,"u":7.126838838010992,"Ir":5.0,"fanin":1000,"refractory":0,"seed":222467620</P></DevI>
+			<DevI id="n_293" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.84787188031843,"u":7.997815016041535,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3998595833</P></DevI>
+			<DevI id="n_294" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.46338869734592,"u":7.771609765463132,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3589431494</P></DevI>
+			<DevI id="n_295" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.15705176624205,"u":7.328661183077724,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3007961878</P></DevI>
+			<DevI id="n_296" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.99608095583677,"u":4.815364586101724,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2983408986</P></DevI>
+			<DevI id="n_297" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.5915808377192,"u":3.299964663374528,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3189532146</P></DevI>
+			<DevI id="n_298" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.799193618015,"u":7.998565388296631,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1137786920</P></DevI>
+			<DevI id="n_299" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.49272013903581,"u":5.053882398802761,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1809218235</P></DevI>
+			<DevI id="n_300" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.866461920815276,"u":5.833802466252544,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2878094525</P></DevI>
+			<DevI id="n_301" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.92611839531829,"u":5.091761899962207,"Ir":5.0,"fanin":1000,"refractory":0,"seed":876405734</P></DevI>
+			<DevI id="n_302" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.532287893125535,"u":7.373368952531154,"Ir":5.0,"fanin":1000,"refractory":0,"seed":402480555</P></DevI>
+			<DevI id="n_303" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.419389737960785,"u":2.0476654424485217,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2101020110</P></DevI>
+			<DevI id="n_304" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.08746894289196,"u":2.822509515100008,"Ir":5.0,"fanin":1000,"refractory":0,"seed":385632457</P></DevI>
+			<DevI id="n_305" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.92522612870318,"u":6.541509091666748,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2719269486</P></DevI>
+			<DevI id="n_306" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.47699874879311,"u":7.904362154944814,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3682522027</P></DevI>
+			<DevI id="n_307" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.41480618687058,"u":2.038067917721169,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4062825852</P></DevI>
+			<DevI id="n_308" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.55849934046438,"u":7.375053345727163,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3609584848</P></DevI>
+			<DevI id="n_309" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.4330384505371,"u":4.746142523533695,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3997877702</P></DevI>
+			<DevI id="n_310" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.43054724491993,"u":7.904401697109245,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1159417421</P></DevI>
+			<DevI id="n_311" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.97252869795591,"u":6.998831311181875,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2591290669</P></DevI>
+			<DevI id="n_312" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.35135552429797,"u":7.960668402418651,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1644226733</P></DevI>
+			<DevI id="n_313" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.78358490479481,"u":5.09289753404029,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1235929859</P></DevI>
+			<DevI id="n_314" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.96969180257786,"u":6.500971732331715,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2030296796</P></DevI>
+			<DevI id="n_315" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.799330145493336,"u":5.839349737515411,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4007165671</P></DevI>
+			<DevI id="n_316" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.95703248092796,"u":6.248297017268749,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2765554942</P></DevI>
+			<DevI id="n_317" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.97138415485296,"u":7.009676538992636,"Ir":5.0,"fanin":1000,"refractory":0,"seed":479513030</P></DevI>
+			<DevI id="n_318" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.62654888037417,"u":7.916075409925168,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2788306146</P></DevI>
+			<DevI id="n_319" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.97826118571251,"u":7.8139840685539514,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3148226584</P></DevI>
+			<DevI id="n_320" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.59621346686241,"u":7.9755223308353385,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1976946865</P></DevI>
+			<DevI id="n_321" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.67578298860831,"u":7.249961618777303,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2959843486</P></DevI>
+			<DevI id="n_322" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.785277242147764,"u":5.579651428898908,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2386755515</P></DevI>
+			<DevI id="n_323" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.22788527456839,"u":5.987270616580414,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2140186028</P></DevI>
+			<DevI id="n_324" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.89538487391853,"u":7.737156263453901,"Ir":5.0,"fanin":1000,"refractory":0,"seed":50647776</P></DevI>
+			<DevI id="n_325" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.46405272322761,"u":7.965447552935562,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1452706084</P></DevI>
+			<DevI id="n_326" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.72641056831226,"u":7.709364910141241,"Ir":5.0,"fanin":1000,"refractory":0,"seed":907003147</P></DevI>
+			<DevI id="n_327" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.10467339485181,"u":2.570310490010929,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3162466747</P></DevI>
+			<DevI id="n_328" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.774244493521046,"u":5.411846638122828,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2253171154</P></DevI>
+			<DevI id="n_329" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.80755633322968,"u":2.368828303808219,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1842551082</P></DevI>
+			<DevI id="n_330" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.475083872741145,"u":7.635746453864333,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1771956569</P></DevI>
+			<DevI id="n_331" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.5055735243764,"u":5.351935114461607,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1294488436</P></DevI>
+			<DevI id="n_332" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.853845768215365,"u":2.223522096489952,"Ir":5.0,"fanin":1000,"refractory":0,"seed":777694464</P></DevI>
+			<DevI id="n_333" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.17157957815656,"u":7.265820064714833,"Ir":5.0,"fanin":1000,"refractory":0,"seed":644833760</P></DevI>
+			<DevI id="n_334" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.0052926259035,"u":2.2188423242565234,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2709023356</P></DevI>
+			<DevI id="n_335" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.35980704167763,"u":4.136069697112686,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4236561186</P></DevI>
+			<DevI id="n_336" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.83679263784741,"u":2.7483798965286983,"Ir":5.0,"fanin":1000,"refractory":0,"seed":998158078</P></DevI>
+			<DevI id="n_337" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.33616588751222,"u":7.681928467746711,"Ir":5.0,"fanin":1000,"refractory":0,"seed":436643626</P></DevI>
+			<DevI id="n_338" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.5934843406451,"u":7.835918060687888,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3053509006</P></DevI>
+			<DevI id="n_339" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.93454477837496,"u":4.904613303454617,"Ir":5.0,"fanin":1000,"refractory":0,"seed":548757373</P></DevI>
+			<DevI id="n_340" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.70059093245388,"u":7.316896854921987,"Ir":5.0,"fanin":1000,"refractory":0,"seed":524683877</P></DevI>
+			<DevI id="n_341" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.479436948167,"u":6.656893307853701,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1196372499</P></DevI>
+			<DevI id="n_342" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.33776478275104,"u":3.1699830629404566,"Ir":5.0,"fanin":1000,"refractory":0,"seed":724065085</P></DevI>
+			<DevI id="n_343" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.52747730648882,"u":7.649310416088356,"Ir":5.0,"fanin":1000,"refractory":0,"seed":494367082</P></DevI>
+			<DevI id="n_344" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.721370586743554,"u":7.849046999451661,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3283116968</P></DevI>
+			<DevI id="n_345" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.3439322242062,"u":4.1996381845684,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1793069483</P></DevI>
+			<DevI id="n_346" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.57313057006611,"u":5.547194928246547,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3207412053</P></DevI>
+			<DevI id="n_347" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.89922125043714,"u":6.26001821252297,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1933731694</P></DevI>
+			<DevI id="n_348" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.220967836208246,"u":7.891090619577697,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2926615516</P></DevI>
+			<DevI id="n_349" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.81703332787218,"u":4.147790321614176,"Ir":5.0,"fanin":1000,"refractory":0,"seed":393885736</P></DevI>
+			<DevI id="n_350" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.552779192764376,"u":6.54218112512478,"Ir":5.0,"fanin":1000,"refractory":0,"seed":131529221</P></DevI>
+			<DevI id="n_351" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.39064068299422,"u":6.455711238862465,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1770213717</P></DevI>
+			<DevI id="n_352" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.3661344018459,"u":4.135283589165322,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3487425435</P></DevI>
+			<DevI id="n_353" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.9101481818695,"u":3.060573121675742,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3731372691</P></DevI>
+			<DevI id="n_354" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.6154203264597,"u":7.284423402018945,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1673716044</P></DevI>
+			<DevI id="n_355" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.9255924669257,"u":5.193374304360279,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2376289930</P></DevI>
+			<DevI id="n_356" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.99079899062109,"u":3.9629674212829027,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3296733511</P></DevI>
+			<DevI id="n_357" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.7254076134664,"u":6.634368733748489,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2812956895</P></DevI>
+			<DevI id="n_358" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.771430405573774,"u":6.2914261687771,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1647539401</P></DevI>
+			<DevI id="n_359" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.31626369722081,"u":5.06886145812471,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1918402688</P></DevI>
+			<DevI id="n_360" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.26526069098565,"u":7.140390785175496,"Ir":5.0,"fanin":1000,"refractory":0,"seed":252243098</P></DevI>
+			<DevI id="n_361" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.789328763522406,"u":3.7041708503409794,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1110117378</P></DevI>
+			<DevI id="n_362" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.798628366354535,"u":7.841438593724143,"Ir":5.0,"fanin":1000,"refractory":0,"seed":854108376</P></DevI>
+			<DevI id="n_363" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.67347363123749,"u":7.541245723123829,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1062725617</P></DevI>
+			<DevI id="n_364" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.94393037816751,"u":7.604330549137629,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3779150887</P></DevI>
+			<DevI id="n_365" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.02886843153867,"u":7.976659985264718,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2902430246</P></DevI>
+			<DevI id="n_366" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.40175479562551,"u":2.270112685663568,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1060659718</P></DevI>
+			<DevI id="n_367" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.6494140593438,"u":7.813280662484598,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3637696325</P></DevI>
+			<DevI id="n_368" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.854599545078585,"u":4.5107757253889575,"Ir":5.0,"fanin":1000,"refractory":0,"seed":706237416</P></DevI>
+			<DevI id="n_369" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.07469061972195,"u":3.571804538785501,"Ir":5.0,"fanin":1000,"refractory":0,"seed":915898575</P></DevI>
+			<DevI id="n_370" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.54089227101189,"u":6.926014379707679,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2005264502</P></DevI>
+			<DevI id="n_371" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.67938097491309,"u":7.1189303030594235,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4277284751</P></DevI>
+			<DevI id="n_372" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.68346222453856,"u":7.644765330055943,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1066146271</P></DevI>
+			<DevI id="n_373" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.99836052370581,"u":5.49578528350854,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1856037693</P></DevI>
+			<DevI id="n_374" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.76437402568459,"u":4.3169510334194,"Ir":5.0,"fanin":1000,"refractory":0,"seed":421475927</P></DevI>
+			<DevI id="n_375" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.99899605740019,"u":3.5726792159786083,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3544956295</P></DevI>
+			<DevI id="n_376" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.896384601442435,"u":7.942716458918713,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1580631573</P></DevI>
+			<DevI id="n_377" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.743613760269156,"u":7.333322405942213,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3570294140</P></DevI>
+			<DevI id="n_378" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.28000440695723,"u":5.307046731588138,"Ir":5.0,"fanin":1000,"refractory":0,"seed":917626379</P></DevI>
+			<DevI id="n_379" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.409992615843045,"u":7.9142461896621015,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1834833674</P></DevI>
+			<DevI id="n_380" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.95770597891114,"u":2.447460772137683,"Ir":5.0,"fanin":1000,"refractory":0,"seed":862459200</P></DevI>
+			<DevI id="n_381" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.019131758208935,"u":7.296883164812149,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3693450250</P></DevI>
+			<DevI id="n_382" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.32343514148123,"u":7.485281763109924,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2222616019</P></DevI>
+			<DevI id="n_383" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.70351474098376,"u":6.61413531249317,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1091929056</P></DevI>
+			<DevI id="n_384" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.075488227187904,"u":7.941759956230485,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2409563032</P></DevI>
+			<DevI id="n_385" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.17274514610056,"u":4.367480664211483,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4043961762</P></DevI>
+			<DevI id="n_386" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.37883238837927,"u":7.309434753223034,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3820127869</P></DevI>
+			<DevI id="n_387" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.97774753438208,"u":4.593064746512464,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2825318396</P></DevI>
+			<DevI id="n_388" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.62429363702074,"u":7.9987272531561215,"Ir":5.0,"fanin":1000,"refractory":0,"seed":537203480</P></DevI>
+			<DevI id="n_389" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.27497553300599,"u":4.667574761124653,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3343755821</P></DevI>
+			<DevI id="n_390" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.84661517923064,"u":7.428703650442087,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2861141107</P></DevI>
+			<DevI id="n_391" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.22447547499089,"u":6.624865040124689,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2871578556</P></DevI>
+			<DevI id="n_392" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.9890882161005,"u":6.254862081567577,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4108638832</P></DevI>
+			<DevI id="n_393" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.30347072302111,"u":7.620885125487997,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1665725144</P></DevI>
+			<DevI id="n_394" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.75923161421672,"u":2.6404382917755145,"Ir":5.0,"fanin":1000,"refractory":0,"seed":438687411</P></DevI>
+			<DevI id="n_395" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.98316516446707,"u":7.0477298333631175,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4278628221</P></DevI>
+			<DevI id="n_396" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.00095943820809,"u":7.890350536243631,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3592208008</P></DevI>
+			<DevI id="n_397" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.187658071182476,"u":7.6787317748189166,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2538449935</P></DevI>
+			<DevI id="n_398" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.77886804473603,"u":7.989711693109143,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3946674314</P></DevI>
+			<DevI id="n_399" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.73761206395737,"u":7.971135186288159,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1409496750</P></DevI>
+			<DevI id="n_400" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.32748120587515,"u":2.8720985063423736,"Ir":5.0,"fanin":1000,"refractory":0,"seed":219620808</P></DevI>
+			<DevI id="n_401" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.76151597323981,"u":7.379054079784756,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3915001597</P></DevI>
+			<DevI id="n_402" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.42880831378725,"u":3.213180645987081,"Ir":5.0,"fanin":1000,"refractory":0,"seed":14535812</P></DevI>
+			<DevI id="n_403" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.08969692395399,"u":7.490257032236271,"Ir":5.0,"fanin":1000,"refractory":0,"seed":42811047</P></DevI>
+			<DevI id="n_404" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.34880932066692,"u":6.737735301640257,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2994165674</P></DevI>
+			<DevI id="n_405" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.856676551888874,"u":5.168910677042155,"Ir":5.0,"fanin":1000,"refractory":0,"seed":310964366</P></DevI>
+			<DevI id="n_406" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.97558915700471,"u":7.43102335144039,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1365913480</P></DevI>
+			<DevI id="n_407" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.075034352008,"u":7.7909849451766595,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1955588588</P></DevI>
+			<DevI id="n_408" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.77832623763266,"u":7.774309778276722,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3580546347</P></DevI>
+			<DevI id="n_409" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.1927151148451,"u":7.302052392654151,"Ir":5.0,"fanin":1000,"refractory":0,"seed":685217300</P></DevI>
+			<DevI id="n_410" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.70513466475323,"u":2.5084785606666236,"Ir":5.0,"fanin":1000,"refractory":0,"seed":411049100</P></DevI>
+			<DevI id="n_411" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.2205706360693,"u":7.978166835361341,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3589462388</P></DevI>
+			<DevI id="n_412" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.825992174011425,"u":6.67559386703415,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1087920357</P></DevI>
+			<DevI id="n_413" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.12347069180703,"u":5.025788715815027,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3696864275</P></DevI>
+			<DevI id="n_414" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.809572182249106,"u":7.990411493232644,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2640294963</P></DevI>
+			<DevI id="n_415" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.99761042245158,"u":7.7157660359429645,"Ir":5.0,"fanin":1000,"refractory":0,"seed":534676179</P></DevI>
+			<DevI id="n_416" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.15842252509317,"u":2.3982095733495097,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1471538873</P></DevI>
+			<DevI id="n_417" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.99998712570107,"u":6.15412740797032,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3019682937</P></DevI>
+			<DevI id="n_418" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.14843577799401,"u":2.299184648611016,"Ir":5.0,"fanin":1000,"refractory":0,"seed":215423255</P></DevI>
+			<DevI id="n_419" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.89382292298394,"u":5.517269023363336,"Ir":5.0,"fanin":1000,"refractory":0,"seed":849858361</P></DevI>
+			<DevI id="n_420" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.8458739931099,"u":7.949595162749597,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3731476693</P></DevI>
+			<DevI id="n_421" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.90423787494458,"u":5.684973776717361,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3176407993</P></DevI>
+			<DevI id="n_422" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.982729745440466,"u":7.160577500416757,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1122456625</P></DevI>
+			<DevI id="n_423" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.43146392796152,"u":7.988460883306244,"Ir":5.0,"fanin":1000,"refractory":0,"seed":104044959</P></DevI>
+			<DevI id="n_424" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.16054207861253,"u":5.816703726837227,"Ir":5.0,"fanin":1000,"refractory":0,"seed":461915497</P></DevI>
+			<DevI id="n_425" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.050783003069384,"u":7.998647093404377,"Ir":5.0,"fanin":1000,"refractory":0,"seed":925006679</P></DevI>
+			<DevI id="n_426" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.840830557424944,"u":3.7725472304654337,"Ir":5.0,"fanin":1000,"refractory":0,"seed":167086023</P></DevI>
+			<DevI id="n_427" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.78666516705353,"u":7.628510603222146,"Ir":5.0,"fanin":1000,"refractory":0,"seed":155861690</P></DevI>
+			<DevI id="n_428" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.23825826498451,"u":7.501749644245202,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1470333590</P></DevI>
+			<DevI id="n_429" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.48626263634251,"u":5.187395376716901,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3288816906</P></DevI>
+			<DevI id="n_430" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.97845339906269,"u":7.334290140443122,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2695525404</P></DevI>
+			<DevI id="n_431" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.48898120267357,"u":7.973881408469189,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2901979015</P></DevI>
+			<DevI id="n_432" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.922158261073534,"u":2.099478448094424,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2706336335</P></DevI>
+			<DevI id="n_433" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.11138289975523,"u":7.45947948880015,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1717088643</P></DevI>
+			<DevI id="n_434" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.080773772403276,"u":7.07308846041372,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3024305703</P></DevI>
+			<DevI id="n_435" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.93665933707882,"u":5.827700470772074,"Ir":5.0,"fanin":1000,"refractory":0,"seed":32153985</P></DevI>
+			<DevI id="n_436" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.7073866508902,"u":3.6043176935995644,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3892571184</P></DevI>
+			<DevI id="n_437" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.177059213467025,"u":6.964441623160971,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3139873801</P></DevI>
+			<DevI id="n_438" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.82703134796587,"u":7.982474340512184,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3046991603</P></DevI>
+			<DevI id="n_439" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.4961720913615,"u":5.00465154131223,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1087714390</P></DevI>
+			<DevI id="n_440" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.1958091982334,"u":5.01838503864486,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1323956775</P></DevI>
+			<DevI id="n_441" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.95450086979095,"u":7.459610930323483,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4174098332</P></DevI>
+			<DevI id="n_442" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.03352090197984,"u":6.551360251606821,"Ir":5.0,"fanin":1000,"refractory":0,"seed":710474999</P></DevI>
+			<DevI id="n_443" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.017033951089935,"u":4.23780937014944,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3509250981</P></DevI>
+			<DevI id="n_444" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.67598328241837,"u":7.720948788511799,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4115164704</P></DevI>
+			<DevI id="n_445" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.65341599699765,"u":2.5058948089206874,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2454628438</P></DevI>
+			<DevI id="n_446" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.323805804135795,"u":7.592960028002082,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2966732061</P></DevI>
+			<DevI id="n_447" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.21633363657705,"u":6.40030699921314,"Ir":5.0,"fanin":1000,"refractory":0,"seed":140074055</P></DevI>
+			<DevI id="n_448" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.978690551587,"u":5.192053300222004,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3705168190</P></DevI>
+			<DevI id="n_449" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.63370885371864,"u":4.826773413474289,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3269493770</P></DevI>
+			<DevI id="n_450" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.19294842623833,"u":6.759436581584952,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4137088035</P></DevI>
+			<DevI id="n_451" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.97957958009996,"u":2.1715206788028745,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4064763437</P></DevI>
+			<DevI id="n_452" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.86648123111057,"u":7.348568509657541,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1347091356</P></DevI>
+			<DevI id="n_453" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.08699993568456,"u":6.929996901666486,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4003576209</P></DevI>
+			<DevI id="n_454" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.67765660983841,"u":3.8696593364161833,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2627701385</P></DevI>
+			<DevI id="n_455" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.63599369894418,"u":7.121594551579011,"Ir":5.0,"fanin":1000,"refractory":0,"seed":471606302</P></DevI>
+			<DevI id="n_456" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.12533499800251,"u":6.980744641368178,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2016785259</P></DevI>
+			<DevI id="n_457" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.496606160614505,"u":7.599208119912451,"Ir":5.0,"fanin":1000,"refractory":0,"seed":233126634</P></DevI>
+			<DevI id="n_458" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.76082936523537,"u":3.865533493388278,"Ir":5.0,"fanin":1000,"refractory":0,"seed":537762183</P></DevI>
+			<DevI id="n_459" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.788485982362886,"u":7.944629115631758,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3555813208</P></DevI>
+			<DevI id="n_460" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.99998357348656,"u":4.022205826627223,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3976189183</P></DevI>
+			<DevI id="n_461" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.33307922395454,"u":3.061268083616964,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2583678195</P></DevI>
+			<DevI id="n_462" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.685932329033506,"u":5.596104651312906,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2428569223</P></DevI>
+			<DevI id="n_463" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.106085278986825,"u":7.385064530410543,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3817918080</P></DevI>
+			<DevI id="n_464" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.02234989457083,"u":6.239123097557576,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1913026051</P></DevI>
+			<DevI id="n_465" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.57247611012652,"u":4.331170541154686,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1917599389</P></DevI>
+			<DevI id="n_466" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.23241602226376,"u":4.372892255592465,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3111406096</P></DevI>
+			<DevI id="n_467" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.19216259171744,"u":2.0596586052779804,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3396576790</P></DevI>
+			<DevI id="n_468" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.7081024440421,"u":7.725443100197258,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1825768690</P></DevI>
+			<DevI id="n_469" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.91610141051833,"u":7.980125523733547,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3880276613</P></DevI>
+			<DevI id="n_470" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.92196781593896,"u":7.267934475012385,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3652342533</P></DevI>
+			<DevI id="n_471" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.892065247789176,"u":7.521263494278014,"Ir":5.0,"fanin":1000,"refractory":0,"seed":604317904</P></DevI>
+			<DevI id="n_472" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.87419200166126,"u":7.943240687279349,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1624106098</P></DevI>
+			<DevI id="n_473" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.7659017578786,"u":2.7676003524533366,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4197853030</P></DevI>
+			<DevI id="n_474" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.486537323001656,"u":5.237451964037033,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1384212543</P></DevI>
+			<DevI id="n_475" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.42812972293551,"u":4.46526759036616,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3356780603</P></DevI>
+			<DevI id="n_476" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.20047665260853,"u":7.874811056400345,"Ir":5.0,"fanin":1000,"refractory":0,"seed":597505306</P></DevI>
+			<DevI id="n_477" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.829606087202315,"u":6.615557343280452,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4045389226</P></DevI>
+			<DevI id="n_478" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.8431146692951,"u":3.788496785433744,"Ir":5.0,"fanin":1000,"refractory":0,"seed":244890152</P></DevI>
+			<DevI id="n_479" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.71434470213374,"u":5.7808141809374405,"Ir":5.0,"fanin":1000,"refractory":0,"seed":131150231</P></DevI>
+			<DevI id="n_480" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.92839199098177,"u":4.2783982636536475,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1459754464</P></DevI>
+			<DevI id="n_481" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.839038634200904,"u":5.683776808374585,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2941969831</P></DevI>
+			<DevI id="n_482" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.56081979524766,"u":6.742108434890128,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3888686141</P></DevI>
+			<DevI id="n_483" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.95237614816489,"u":7.97182961102957,"Ir":5.0,"fanin":1000,"refractory":0,"seed":668296224</P></DevI>
+			<DevI id="n_484" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.30332144229927,"u":4.872158751681162,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2887509163</P></DevI>
+			<DevI id="n_485" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.66230441526223,"u":7.698908931237561,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2541944642</P></DevI>
+			<DevI id="n_486" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.47866820630952,"u":6.034309833909875,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1201142624</P></DevI>
+			<DevI id="n_487" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.7232453100723,"u":6.9508767770441136,"Ir":5.0,"fanin":1000,"refractory":0,"seed":750799625</P></DevI>
+			<DevI id="n_488" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.02098799076854,"u":7.930194727895192,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3452226163</P></DevI>
+			<DevI id="n_489" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.369158605031394,"u":7.489099217341228,"Ir":5.0,"fanin":1000,"refractory":0,"seed":377558010</P></DevI>
+			<DevI id="n_490" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.43191347496197,"u":7.748113946021057,"Ir":5.0,"fanin":1000,"refractory":0,"seed":621760356</P></DevI>
+			<DevI id="n_491" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.3937651421188,"u":6.9714878082761125,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2456416827</P></DevI>
+			<DevI id="n_492" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.837742428708744,"u":7.400225612381356,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3908796269</P></DevI>
+			<DevI id="n_493" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.115517980599286,"u":7.5416055718323705,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1561885117</P></DevI>
+			<DevI id="n_494" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.207257882931856,"u":7.084013837879965,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4224675123</P></DevI>
+			<DevI id="n_495" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.8671288914349,"u":7.970571870568891,"Ir":5.0,"fanin":1000,"refractory":0,"seed":799053669</P></DevI>
+			<DevI id="n_496" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.530353016585494,"u":7.777796084024818,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3204700509</P></DevI>
+			<DevI id="n_497" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.60543511550399,"u":7.970436001060574,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2413425100</P></DevI>
+			<DevI id="n_498" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.90389643733847,"u":7.23382876865327,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3911782889</P></DevI>
+			<DevI id="n_499" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.877258303675816,"u":3.6392843303211935,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1798548293</P></DevI>
+			<DevI id="n_500" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.99589952255113,"u":3.623623596412835,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2095197555</P></DevI>
+			<DevI id="n_501" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.99829294852535,"u":4.552219094363027,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2849245557</P></DevI>
+			<DevI id="n_502" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.65796761911099,"u":7.0532826063873495,"Ir":5.0,"fanin":1000,"refractory":0,"seed":191473487</P></DevI>
+			<DevI id="n_503" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.8188342044497,"u":5.906858700015935,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4226139815</P></DevI>
+			<DevI id="n_504" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.22304503658947,"u":5.072607464559497,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2046567983</P></DevI>
+			<DevI id="n_505" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.59494385170802,"u":7.962873727496271,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2615491457</P></DevI>
+			<DevI id="n_506" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.026992647543445,"u":7.833308453250105,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3690010550</P></DevI>
+			<DevI id="n_507" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.95298135458533,"u":6.769656033569456,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1299759463</P></DevI>
+			<DevI id="n_508" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.5042299053323,"u":6.408532448267759,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3090702352</P></DevI>
+			<DevI id="n_509" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.65538814237834,"u":7.997437313241925,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4229720906</P></DevI>
+			<DevI id="n_510" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.25063611425592,"u":5.662217118480969,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3187161105</P></DevI>
+			<DevI id="n_511" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.02279820455614,"u":7.453503703080304,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1549062319</P></DevI>
+			<DevI id="n_512" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.82479269563876,"u":5.245779756458891,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3655337059</P></DevI>
+			<DevI id="n_513" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.99960698311457,"u":5.503372852245524,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2327269367</P></DevI>
+			<DevI id="n_514" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.22845154292849,"u":5.182981899871253,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2538511386</P></DevI>
+			<DevI id="n_515" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.51297683181967,"u":7.075335321182839,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4114947096</P></DevI>
+			<DevI id="n_516" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.45789023905881,"u":7.850796657586291,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2716071525</P></DevI>
+			<DevI id="n_517" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.84649330839367,"u":7.961258571444972,"Ir":5.0,"fanin":1000,"refractory":0,"seed":111052617</P></DevI>
+			<DevI id="n_518" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.34442540974817,"u":4.189136713118813,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2253162607</P></DevI>
+			<DevI id="n_519" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.39652222750311,"u":4.757412484557072,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1083961871</P></DevI>
+			<DevI id="n_520" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.32010963182995,"u":7.887332863008245,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4044818681</P></DevI>
+			<DevI id="n_521" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.91263358493664,"u":6.391594204593475,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1045993644</P></DevI>
+			<DevI id="n_522" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.97211729565941,"u":7.916580551856001,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2223800014</P></DevI>
+			<DevI id="n_523" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.4886875362871,"u":5.5927530034476565,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1303648492</P></DevI>
+			<DevI id="n_524" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.00656631132559,"u":5.493203048520573,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3853296483</P></DevI>
+			<DevI id="n_525" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.69857187465857,"u":3.1219348791531782,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2423450650</P></DevI>
+			<DevI id="n_526" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.72083862112882,"u":7.5099897970416665,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3581942529</P></DevI>
+			<DevI id="n_527" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.87957725182501,"u":4.426888219816982,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4259378057</P></DevI>
+			<DevI id="n_528" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.49570603340419,"u":2.449002822002581,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3687300110</P></DevI>
+			<DevI id="n_529" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.017932147142986,"u":6.515192194187868,"Ir":5.0,"fanin":1000,"refractory":0,"seed":109000618</P></DevI>
+			<DevI id="n_530" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.99987186534467,"u":7.2170623495161115,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3183063530</P></DevI>
+			<DevI id="n_531" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.25017192824885,"u":7.813010742933172,"Ir":5.0,"fanin":1000,"refractory":0,"seed":884265407</P></DevI>
+			<DevI id="n_532" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.027051305301796,"u":3.5819547803902543,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3969891269</P></DevI>
+			<DevI id="n_533" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.89990540849018,"u":6.560212172534099,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3507033473</P></DevI>
+			<DevI id="n_534" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.892891125051044,"u":4.6939028433018635,"Ir":5.0,"fanin":1000,"refractory":0,"seed":735011951</P></DevI>
+			<DevI id="n_535" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.98981545851802,"u":5.28445157658134,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2230154075</P></DevI>
+			<DevI id="n_536" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.13890142241137,"u":2.3655841797059436,"Ir":5.0,"fanin":1000,"refractory":0,"seed":61950054</P></DevI>
+			<DevI id="n_537" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.71642844092083,"u":6.610198924201785,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1824762649</P></DevI>
+			<DevI id="n_538" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.92661728224672,"u":7.138056932071275,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3949052432</P></DevI>
+			<DevI id="n_539" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.10285508176311,"u":2.0708593784112947,"Ir":5.0,"fanin":1000,"refractory":0,"seed":793098538</P></DevI>
+			<DevI id="n_540" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.20947947509228,"u":5.776929826539003,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2170459600</P></DevI>
+			<DevI id="n_541" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.95556346494547,"u":5.929862560917396,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3350304281</P></DevI>
+			<DevI id="n_542" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.98656348021576,"u":7.606444510675087,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2681774925</P></DevI>
+			<DevI id="n_543" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.4251635506219,"u":7.897783221295603,"Ir":5.0,"fanin":1000,"refractory":0,"seed":796338037</P></DevI>
+			<DevI id="n_544" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.96335191151457,"u":7.880773779857603,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4236387468</P></DevI>
+			<DevI id="n_545" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.66213021964883,"u":7.96662189537862,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3579930897</P></DevI>
+			<DevI id="n_546" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.97311389455653,"u":7.902831788149922,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1814926368</P></DevI>
+			<DevI id="n_547" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.132743755351385,"u":6.04316073438359,"Ir":5.0,"fanin":1000,"refractory":0,"seed":846020428</P></DevI>
+			<DevI id="n_548" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.88696394491722,"u":2.9603398233841576,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4047603814</P></DevI>
+			<DevI id="n_549" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.36360437092416,"u":4.057287074678579,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1569128649</P></DevI>
+			<DevI id="n_550" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.51201937025777,"u":2.7770882264854766,"Ir":5.0,"fanin":1000,"refractory":0,"seed":673962154</P></DevI>
+			<DevI id="n_551" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.48821303091114,"u":3.1308225260607028,"Ir":5.0,"fanin":1000,"refractory":0,"seed":532083615</P></DevI>
+			<DevI id="n_552" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.23558562053589,"u":7.397661560221784,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3109549801</P></DevI>
+			<DevI id="n_553" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.59709830021031,"u":7.874995633569371,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2169682379</P></DevI>
+			<DevI id="n_554" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.97301395131869,"u":7.189783561720174,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1683676795</P></DevI>
+			<DevI id="n_555" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.99332299699827,"u":5.143364574084652,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2932334704</P></DevI>
+			<DevI id="n_556" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.1259385101719,"u":2.6560860985201247,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1150985548</P></DevI>
+			<DevI id="n_557" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.388281248714485,"u":7.067124614469643,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2685628522</P></DevI>
+			<DevI id="n_558" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.57776847158317,"u":5.990377265013219,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1542002826</P></DevI>
+			<DevI id="n_559" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.95507455982501,"u":7.935231036795432,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1459437779</P></DevI>
+			<DevI id="n_560" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.202189371594436,"u":4.070860369252188,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2062077089</P></DevI>
+			<DevI id="n_561" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.8578412936616,"u":6.929218740646278,"Ir":5.0,"fanin":1000,"refractory":0,"seed":290020906</P></DevI>
+			<DevI id="n_562" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.99698107831803,"u":3.156839534661313,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4019760077</P></DevI>
+			<DevI id="n_563" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.74715552810811,"u":3.2245379477479714,"Ir":5.0,"fanin":1000,"refractory":0,"seed":889004644</P></DevI>
+			<DevI id="n_564" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.67873080246216,"u":6.608064291210534,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1104550459</P></DevI>
+			<DevI id="n_565" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.89543112814749,"u":7.035230385956701,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4194041297</P></DevI>
+			<DevI id="n_566" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.21568846078218,"u":7.54304071288924,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1231539710</P></DevI>
+			<DevI id="n_567" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.62607605987304,"u":6.790522764478437,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3124901221</P></DevI>
+			<DevI id="n_568" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.67403269667625,"u":3.449579687100477,"Ir":5.0,"fanin":1000,"refractory":0,"seed":28097144</P></DevI>
+			<DevI id="n_569" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.840424763629194,"u":5.833990136238612,"Ir":5.0,"fanin":1000,"refractory":0,"seed":410576878</P></DevI>
+			<DevI id="n_570" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.90639494024387,"u":5.462649873920859,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1805570937</P></DevI>
+			<DevI id="n_571" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.13815570126012,"u":7.991636193619897,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2143003846</P></DevI>
+			<DevI id="n_572" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.981523966710746,"u":2.5467244211253606,"Ir":5.0,"fanin":1000,"refractory":0,"seed":660240864</P></DevI>
+			<DevI id="n_573" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.899305979179765,"u":7.741125474158269,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2869201621</P></DevI>
+			<DevI id="n_574" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.65151125331796,"u":7.318869359573335,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3356880626</P></DevI>
+			<DevI id="n_575" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.834380665654386,"u":7.464459313846159,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2016895567</P></DevI>
+			<DevI id="n_576" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.48906433606318,"u":5.130208284897,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2414519066</P></DevI>
+			<DevI id="n_577" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.96494071166812,"u":2.7715185682557753,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2242264917</P></DevI>
+			<DevI id="n_578" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.642332518385246,"u":7.968459471039902,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3469085231</P></DevI>
+			<DevI id="n_579" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.01874058798833,"u":5.207792330069886,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3016318912</P></DevI>
+			<DevI id="n_580" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.44144181898159,"u":7.834619905066395,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1682529722</P></DevI>
+			<DevI id="n_581" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.16282430193694,"u":7.414418680007511,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3747828726</P></DevI>
+			<DevI id="n_582" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.5012629209498,"u":2.2703082200907696,"Ir":5.0,"fanin":1000,"refractory":0,"seed":667702394</P></DevI>
+			<DevI id="n_583" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.32349053199383,"u":3.521285704829202,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3307272753</P></DevI>
+			<DevI id="n_584" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.83322611644404,"u":6.673569961936121,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3626519037</P></DevI>
+			<DevI id="n_585" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.14912255724142,"u":3.5778588517075773,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1106243599</P></DevI>
+			<DevI id="n_586" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.950352886034025,"u":3.6232945871149322,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3594423053</P></DevI>
+			<DevI id="n_587" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.44814990501246,"u":5.411522815072158,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2665031972</P></DevI>
+			<DevI id="n_588" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.8022450379132,"u":4.245935266976925,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3929595892</P></DevI>
+			<DevI id="n_589" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.176314153266304,"u":7.822449569094745,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3253639113</P></DevI>
+			<DevI id="n_590" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.7644923921238,"u":4.929158219362671,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2795682034</P></DevI>
+			<DevI id="n_591" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.02772140138611,"u":7.986062538188641,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1551756429</P></DevI>
+			<DevI id="n_592" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.9053006280028,"u":6.280088379321979,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2168104976</P></DevI>
+			<DevI id="n_593" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.67429996978728,"u":2.0947091565267897,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3917019106</P></DevI>
+			<DevI id="n_594" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.67733831831836,"u":7.994969652246445,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2432013619</P></DevI>
+			<DevI id="n_595" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.57952223510882,"u":5.48878830316014,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1113002376</P></DevI>
+			<DevI id="n_596" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.08287521388297,"u":6.776072186558061,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3452787010</P></DevI>
+			<DevI id="n_597" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.00367458927445,"u":4.2019970686142925,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2546478650</P></DevI>
+			<DevI id="n_598" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.63304457239703,"u":7.84353483132662,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1339025486</P></DevI>
+			<DevI id="n_599" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.71675996950784,"u":6.860764553835228,"Ir":5.0,"fanin":1000,"refractory":0,"seed":84712105</P></DevI>
+			<DevI id="n_600" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.79449520532416,"u":7.471709181539378,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3029798904</P></DevI>
+			<DevI id="n_601" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.35617837751886,"u":7.944511709308131,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3999531401</P></DevI>
+			<DevI id="n_602" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.48574756024001,"u":7.1948610533226685,"Ir":5.0,"fanin":1000,"refractory":0,"seed":914041817</P></DevI>
+			<DevI id="n_603" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.23840263644362,"u":6.129364816044304,"Ir":5.0,"fanin":1000,"refractory":0,"seed":257646741</P></DevI>
+			<DevI id="n_604" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.95163946659103,"u":5.898717879229094,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2746372971</P></DevI>
+			<DevI id="n_605" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.910699235608504,"u":7.064717651461147,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2598264873</P></DevI>
+			<DevI id="n_606" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.45796623313937,"u":5.967579516937024,"Ir":5.0,"fanin":1000,"refractory":0,"seed":403661423</P></DevI>
+			<DevI id="n_607" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.89829516213416,"u":7.57637646403564,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2825880629</P></DevI>
+			<DevI id="n_608" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.93784260231325,"u":7.998266455395896,"Ir":5.0,"fanin":1000,"refractory":0,"seed":92211244</P></DevI>
+			<DevI id="n_609" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.936279015198735,"u":7.6113136559542545,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3094980552</P></DevI>
+			<DevI id="n_610" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.4564468419232,"u":7.684837949868266,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2461492167</P></DevI>
+			<DevI id="n_611" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.47498303621087,"u":6.669413241638677,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1828855316</P></DevI>
+			<DevI id="n_612" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.93797562338833,"u":2.8735234453019656,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2052968642</P></DevI>
+			<DevI id="n_613" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.10152252914126,"u":6.332900641107132,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1966242313</P></DevI>
+			<DevI id="n_614" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.11323239709564,"u":3.8246149387608144,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2780627704</P></DevI>
+			<DevI id="n_615" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.36970323213086,"u":4.747011280430252,"Ir":5.0,"fanin":1000,"refractory":0,"seed":197761482</P></DevI>
+			<DevI id="n_616" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.98816470981251,"u":4.886924909373484,"Ir":5.0,"fanin":1000,"refractory":0,"seed":517047150</P></DevI>
+			<DevI id="n_617" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.59184277407625,"u":7.4606009636130945,"Ir":5.0,"fanin":1000,"refractory":0,"seed":892700868</P></DevI>
+			<DevI id="n_618" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.88688196933875,"u":2.209128587233958,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3309406655</P></DevI>
+			<DevI id="n_619" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.22911615616539,"u":3.3524731633621245,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3374775501</P></DevI>
+			<DevI id="n_620" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.15458617964238,"u":3.045745835795503,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2133011062</P></DevI>
+			<DevI id="n_621" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.35843608283581,"u":2.2334437332310584,"Ir":5.0,"fanin":1000,"refractory":0,"seed":668798671</P></DevI>
+			<DevI id="n_622" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.418732377221914,"u":7.8276264705847876,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1994325231</P></DevI>
+			<DevI id="n_623" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.988717732705965,"u":3.529557474818951,"Ir":5.0,"fanin":1000,"refractory":0,"seed":887106257</P></DevI>
+			<DevI id="n_624" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.97303537331896,"u":7.512088452141537,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1520441886</P></DevI>
+			<DevI id="n_625" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.99987351524577,"u":7.247075976406506,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1353570998</P></DevI>
+			<DevI id="n_626" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.83911944220485,"u":3.589704299653664,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4240379908</P></DevI>
+			<DevI id="n_627" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.98311230177677,"u":5.732517135661798,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3378034329</P></DevI>
+			<DevI id="n_628" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.55608990755888,"u":7.910780394915758,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2793853388</P></DevI>
+			<DevI id="n_629" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.77717206520798,"u":3.4489117715308915,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4022713523</P></DevI>
+			<DevI id="n_630" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.86724645785044,"u":2.893500299310128,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1593306927</P></DevI>
+			<DevI id="n_631" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.138267683184026,"u":7.937004408905589,"Ir":5.0,"fanin":1000,"refractory":0,"seed":716914900</P></DevI>
+			<DevI id="n_632" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.89094481133861,"u":6.552174388831185,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3790061806</P></DevI>
+			<DevI id="n_633" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.75163645663083,"u":7.89825864570055,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2030526707</P></DevI>
+			<DevI id="n_634" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.49108887722219,"u":5.10049496800356,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4054788160</P></DevI>
+			<DevI id="n_635" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.06230870191176,"u":6.590890170528599,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2974178286</P></DevI>
+			<DevI id="n_636" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.669215777914694,"u":4.346170000058363,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3578715677</P></DevI>
+			<DevI id="n_637" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.9999949840262,"u":6.919921921086056,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2410229379</P></DevI>
+			<DevI id="n_638" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.79739314202185,"u":7.985262829654314,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1424035401</P></DevI>
+			<DevI id="n_639" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.11432474637978,"u":7.320673520405994,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2020815760</P></DevI>
+			<DevI id="n_640" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.91596393930242,"u":7.7716755701256695,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2830361175</P></DevI>
+			<DevI id="n_641" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.87924213171821,"u":3.5895546300105687,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1902929869</P></DevI>
+			<DevI id="n_642" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.52046551838849,"u":3.526667796718411,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3316235251</P></DevI>
+			<DevI id="n_643" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.61298731912974,"u":7.699990120466684,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1653447205</P></DevI>
+			<DevI id="n_644" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.51804400406276,"u":5.4559338053412105,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2038590761</P></DevI>
+			<DevI id="n_645" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.44537143014974,"u":3.2790375042159567,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1336691314</P></DevI>
+			<DevI id="n_646" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.97329050064182,"u":7.314551653965762,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4206467107</P></DevI>
+			<DevI id="n_647" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.74429507279695,"u":4.06500597881802,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2709640981</P></DevI>
+			<DevI id="n_648" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.52955483894379,"u":6.259712047189089,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1925097297</P></DevI>
+			<DevI id="n_649" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.424774287465084,"u":7.99717166195827,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2767833292</P></DevI>
+			<DevI id="n_650" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.42131079590055,"u":5.13451254630253,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3546683250</P></DevI>
+			<DevI id="n_651" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.975801844075384,"u":7.610898989765539,"Ir":5.0,"fanin":1000,"refractory":0,"seed":51861316</P></DevI>
+			<DevI id="n_652" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.635793161755984,"u":7.999931814796291,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2288482773</P></DevI>
+			<DevI id="n_653" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.037732591182845,"u":4.628309114421254,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2007537380</P></DevI>
+			<DevI id="n_654" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.116669237240714,"u":7.978850580416808,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2768859970</P></DevI>
+			<DevI id="n_655" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.65377696415309,"u":5.745878650959197,"Ir":5.0,"fanin":1000,"refractory":0,"seed":378222159</P></DevI>
+			<DevI id="n_656" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.97695741838517,"u":7.392297858833702,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1093916707</P></DevI>
+			<DevI id="n_657" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.86061491158975,"u":4.778320186368173,"Ir":5.0,"fanin":1000,"refractory":0,"seed":791470450</P></DevI>
+			<DevI id="n_658" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.76920185735092,"u":7.040509986392578,"Ir":5.0,"fanin":1000,"refractory":0,"seed":186191510</P></DevI>
+			<DevI id="n_659" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.69810854196135,"u":7.723776285564482,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2488716148</P></DevI>
+			<DevI id="n_660" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.63887113479848,"u":5.1989735087504965,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4211889944</P></DevI>
+			<DevI id="n_661" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.03238428724056,"u":7.941451547202585,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4181735900</P></DevI>
+			<DevI id="n_662" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.03220979995736,"u":5.981958960686185,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3700838492</P></DevI>
+			<DevI id="n_663" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.58118286970725,"u":7.696474335773067,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3432662161</P></DevI>
+			<DevI id="n_664" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.550989511322705,"u":3.842181927816868,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3147397015</P></DevI>
+			<DevI id="n_665" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.67008922967794,"u":7.026398109062438,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4042880626</P></DevI>
+			<DevI id="n_666" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.84847096919761,"u":7.511310397290831,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3717522617</P></DevI>
+			<DevI id="n_667" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.22105991053649,"u":5.348463441374674,"Ir":5.0,"fanin":1000,"refractory":0,"seed":533568535</P></DevI>
+			<DevI id="n_668" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.72602076566432,"u":7.081262778442843,"Ir":5.0,"fanin":1000,"refractory":0,"seed":934969248</P></DevI>
+			<DevI id="n_669" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.86841491683973,"u":3.651433755484712,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3125605379</P></DevI>
+			<DevI id="n_670" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.733182031100434,"u":7.864626457117914,"Ir":5.0,"fanin":1000,"refractory":0,"seed":491925384</P></DevI>
+			<DevI id="n_671" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.98601326929855,"u":7.488770991937667,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2904497791</P></DevI>
+			<DevI id="n_672" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.0311020882769,"u":3.8164618197181204,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1928908253</P></DevI>
+			<DevI id="n_673" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.83615324167307,"u":7.383437517078385,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1532736837</P></DevI>
+			<DevI id="n_674" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.93689946818361,"u":7.695133673168445,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3944389308</P></DevI>
+			<DevI id="n_675" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.911254408977356,"u":6.309301215623384,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3477982729</P></DevI>
+			<DevI id="n_676" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.29455547029704,"u":2.8077674314850585,"Ir":5.0,"fanin":1000,"refractory":0,"seed":947126887</P></DevI>
+			<DevI id="n_677" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.278703032319186,"u":7.910369987935201,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1988997463</P></DevI>
+			<DevI id="n_678" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.75764920999946,"u":4.18896635791815,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2601078956</P></DevI>
+			<DevI id="n_679" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.3988385136188,"u":4.450216740952699,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1115475704</P></DevI>
+			<DevI id="n_680" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.9246551086008,"u":3.390368564090222,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3927233727</P></DevI>
+			<DevI id="n_681" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.30545924012877,"u":6.88369998782282,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1208446425</P></DevI>
+			<DevI id="n_682" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.63298509904389,"u":7.446277445690151,"Ir":5.0,"fanin":1000,"refractory":0,"seed":834733474</P></DevI>
+			<DevI id="n_683" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.31534807623827,"u":7.5766003581131285,"Ir":5.0,"fanin":1000,"refractory":0,"seed":379777206</P></DevI>
+			<DevI id="n_684" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.82529253170869,"u":7.0559662378787,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1077462676</P></DevI>
+			<DevI id="n_685" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.15564979748906,"u":7.999892013490473,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1944064400</P></DevI>
+			<DevI id="n_686" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.7474666774121,"u":3.7331762449233326,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2441311027</P></DevI>
+			<DevI id="n_687" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.94826946920604,"u":6.334270183098054,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1975321181</P></DevI>
+			<DevI id="n_688" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.091794202245474,"u":4.963694202307163,"Ir":5.0,"fanin":1000,"refractory":0,"seed":116228112</P></DevI>
+			<DevI id="n_689" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.82452742137222,"u":7.948844645444036,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2863690019</P></DevI>
+			<DevI id="n_690" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.80790630517191,"u":5.5710232917984905,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2941966457</P></DevI>
+			<DevI id="n_691" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.04225812694311,"u":6.687219314714681,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3701915425</P></DevI>
+			<DevI id="n_692" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.10513480246563,"u":7.972550523945878,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2449603201</P></DevI>
+			<DevI id="n_693" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.83999741134899,"u":5.67914133881777,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1236349296</P></DevI>
+			<DevI id="n_694" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.67997209411964,"u":2.6034759139593815,"Ir":5.0,"fanin":1000,"refractory":0,"seed":286496883</P></DevI>
+			<DevI id="n_695" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.86173809172927,"u":4.918792292135471,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3696769380</P></DevI>
+			<DevI id="n_696" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.72087154179603,"u":7.6625427306037,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1907897487</P></DevI>
+			<DevI id="n_697" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.09849779321952,"u":5.503524171354046,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2535516088</P></DevI>
+			<DevI id="n_698" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.67172690950409,"u":6.745107029043516,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1383926825</P></DevI>
+			<DevI id="n_699" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.77736705471967,"u":2.374637261663107,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1510226748</P></DevI>
+			<DevI id="n_700" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.95704478030407,"u":6.328628451506743,"Ir":5.0,"fanin":1000,"refractory":0,"seed":403425729</P></DevI>
+			<DevI id="n_701" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.93727322982279,"u":6.57048545021347,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2530858038</P></DevI>
+			<DevI id="n_702" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.30936605094524,"u":3.484114784782766,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3671518406</P></DevI>
+			<DevI id="n_703" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.04889195523504,"u":7.344423228017396,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1479454557</P></DevI>
+			<DevI id="n_704" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.6376083385379,"u":7.99964272869153,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1176440154</P></DevI>
+			<DevI id="n_705" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.90336986217677,"u":7.99965092243319,"Ir":5.0,"fanin":1000,"refractory":0,"seed":269533621</P></DevI>
+			<DevI id="n_706" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.6472266972415,"u":7.664531470789521,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2425170707</P></DevI>
+			<DevI id="n_707" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.99900951850987,"u":7.99898105762109,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3816178884</P></DevI>
+			<DevI id="n_708" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.97757032762815,"u":7.991868206782906,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2133715630</P></DevI>
+			<DevI id="n_709" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.404061133374064,"u":6.046151486596569,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1612662154</P></DevI>
+			<DevI id="n_710" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.290975556604096,"u":7.281801249187575,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2496279874</P></DevI>
+			<DevI id="n_711" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.725487534530096,"u":6.7633555283115,"Ir":5.0,"fanin":1000,"refractory":0,"seed":869176624</P></DevI>
+			<DevI id="n_712" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.690605532684565,"u":4.680004105549739,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3467341185</P></DevI>
+			<DevI id="n_713" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.9884351707166,"u":3.309102595986869,"Ir":5.0,"fanin":1000,"refractory":0,"seed":331428112</P></DevI>
+			<DevI id="n_714" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.62200055287503,"u":6.313389936378183,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2197776590</P></DevI>
+			<DevI id="n_715" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.009619114965965,"u":5.2018521460058205,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3063402100</P></DevI>
+			<DevI id="n_716" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.36414684395857,"u":7.830483825385548,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3974469968</P></DevI>
+			<DevI id="n_717" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.94231907809133,"u":7.89882323804152,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2215341727</P></DevI>
+			<DevI id="n_718" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.31139301506457,"u":3.9581608375074806,"Ir":5.0,"fanin":1000,"refractory":0,"seed":230149588</P></DevI>
+			<DevI id="n_719" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.99653729281557,"u":7.681563414651147,"Ir":5.0,"fanin":1000,"refractory":0,"seed":618567880</P></DevI>
+			<DevI id="n_720" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.99182560464043,"u":4.991789105941468,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3008335815</P></DevI>
+			<DevI id="n_721" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.00911256719316,"u":7.965347083280062,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2228784466</P></DevI>
+			<DevI id="n_722" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.93042565446767,"u":5.875541154171259,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1056657462</P></DevI>
+			<DevI id="n_723" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.232128287413,"u":6.066855775885486,"Ir":5.0,"fanin":1000,"refractory":0,"seed":61047066</P></DevI>
+			<DevI id="n_724" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.91332847040364,"u":7.549417915109595,"Ir":5.0,"fanin":1000,"refractory":0,"seed":379868093</P></DevI>
+			<DevI id="n_725" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.38197672746481,"u":2.338663468510589,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2711278573</P></DevI>
+			<DevI id="n_726" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.76981121392358,"u":2.934385461192555,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3762920925</P></DevI>
+			<DevI id="n_727" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.674635606844525,"u":2.2453897180360434,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2178526418</P></DevI>
+			<DevI id="n_728" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.79001759458407,"u":7.998265272196979,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4062955792</P></DevI>
+			<DevI id="n_729" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.883140107949785,"u":2.7374543638276414,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2693804185</P></DevI>
+			<DevI id="n_730" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.90171990003125,"u":6.730808239271109,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3068295105</P></DevI>
+			<DevI id="n_731" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.229354886050366,"u":5.126923887976513,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4280161330</P></DevI>
+			<DevI id="n_732" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.37012427930392,"u":6.113008113712599,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1730125005</P></DevI>
+			<DevI id="n_733" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.73549806499947,"u":4.854300261917816,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2978790008</P></DevI>
+			<DevI id="n_734" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.21227260545709,"u":7.117669870364203,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2374201669</P></DevI>
+			<DevI id="n_735" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.33147181556383,"u":7.347768029789254,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1257596098</P></DevI>
+			<DevI id="n_736" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.64411304018915,"u":6.0498041565496194,"Ir":5.0,"fanin":1000,"refractory":0,"seed":141240576</P></DevI>
+			<DevI id="n_737" type="neuron"><P>"a":0.02,"b":0.2,"v":-50.77953154380544,"u":7.362614691466809,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3147438851</P></DevI>
+			<DevI id="n_738" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.08038494975875,"u":4.154421898222188,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2838172627</P></DevI>
+			<DevI id="n_739" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.8569910252485,"u":5.919920003525846,"Ir":5.0,"fanin":1000,"refractory":0,"seed":213770323</P></DevI>
+			<DevI id="n_740" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.25441560419524,"u":7.241983972225146,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1041898790</P></DevI>
+			<DevI id="n_741" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.54753260517118,"u":7.762977514595629,"Ir":5.0,"fanin":1000,"refractory":0,"seed":706548161</P></DevI>
+			<DevI id="n_742" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.491691022729945,"u":2.0057396983630698,"Ir":5.0,"fanin":1000,"refractory":0,"seed":720539636</P></DevI>
+			<DevI id="n_743" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.56755990118953,"u":7.094549667488252,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3565424741</P></DevI>
+			<DevI id="n_744" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.79630445115745,"u":7.931103091797732,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2804938011</P></DevI>
+			<DevI id="n_745" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.01183803714345,"u":3.2243339742520893,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3413505217</P></DevI>
+			<DevI id="n_746" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.17319453236457,"u":6.793686677060612,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2849744863</P></DevI>
+			<DevI id="n_747" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.93749656212177,"u":6.8819545125615225,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1690965771</P></DevI>
+			<DevI id="n_748" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.97192344683749,"u":7.703609055334531,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1920634504</P></DevI>
+			<DevI id="n_749" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.98454512617373,"u":4.468362308633329,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2078234312</P></DevI>
+			<DevI id="n_750" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.80143798530567,"u":6.014031873698961,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3249311691</P></DevI>
+			<DevI id="n_751" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.94048513786582,"u":7.017646726969164,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1613820271</P></DevI>
+			<DevI id="n_752" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.2259196855118,"u":6.2769042780050395,"Ir":5.0,"fanin":1000,"refractory":0,"seed":192610348</P></DevI>
+			<DevI id="n_753" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.30623518932822,"u":5.633691192138394,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3013627982</P></DevI>
+			<DevI id="n_754" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.79923619810608,"u":2.861860779359229,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1416437658</P></DevI>
+			<DevI id="n_755" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.3224672843807,"u":7.967313089404939,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2835555283</P></DevI>
+			<DevI id="n_756" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.77302394374701,"u":5.977124426787952,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3213033639</P></DevI>
+			<DevI id="n_757" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.4499265504589,"u":4.596585492982944,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3954170709</P></DevI>
+			<DevI id="n_758" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.28883568522596,"u":4.194611596933593,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3900354950</P></DevI>
+			<DevI id="n_759" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.27538977308322,"u":4.933483319910484,"Ir":5.0,"fanin":1000,"refractory":0,"seed":961952163</P></DevI>
+			<DevI id="n_760" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.5355714851351,"u":7.809447995906336,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4033666228</P></DevI>
+			<DevI id="n_761" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.61902240084834,"u":7.313017543201375,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2466604878</P></DevI>
+			<DevI id="n_762" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.69700185672344,"u":5.304668005101541,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3627190184</P></DevI>
+			<DevI id="n_763" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.704404353775104,"u":6.673925750021158,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1471970284</P></DevI>
+			<DevI id="n_764" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.90033273596937,"u":3.863799395176704,"Ir":5.0,"fanin":1000,"refractory":0,"seed":421280639</P></DevI>
+			<DevI id="n_765" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.61168296605906,"u":7.617637723835622,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3752541684</P></DevI>
+			<DevI id="n_766" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.54431931375358,"u":7.896528122464592,"Ir":5.0,"fanin":1000,"refractory":0,"seed":758899351</P></DevI>
+			<DevI id="n_767" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.55268911744577,"u":2.2216212415389975,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2862658619</P></DevI>
+			<DevI id="n_768" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.103414924741244,"u":7.712560529097422,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2527826951</P></DevI>
+			<DevI id="n_769" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.20287299227759,"u":5.225515795999012,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1790718210</P></DevI>
+			<DevI id="n_770" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.67802948863783,"u":7.774233786417822,"Ir":5.0,"fanin":1000,"refractory":0,"seed":663757872</P></DevI>
+			<DevI id="n_771" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.442358065693654,"u":3.252612025872989,"Ir":5.0,"fanin":1000,"refractory":0,"seed":949095024</P></DevI>
+			<DevI id="n_772" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.32693881685633,"u":2.5043638006061055,"Ir":5.0,"fanin":1000,"refractory":0,"seed":534025365</P></DevI>
+			<DevI id="n_773" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.07835050817913,"u":7.998695646479482,"Ir":5.0,"fanin":1000,"refractory":0,"seed":189073505</P></DevI>
+			<DevI id="n_774" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.74122443890421,"u":7.392919606245885,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2885974001</P></DevI>
+			<DevI id="n_775" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.75414901530331,"u":7.386851467661928,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2784261742</P></DevI>
+			<DevI id="n_776" type="neuron"><P>"a":0.02,"b":0.2,"v":-63.427243678007166,"u":7.679297571753225,"Ir":5.0,"fanin":1000,"refractory":0,"seed":822274436</P></DevI>
+			<DevI id="n_777" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.45911827055114,"u":3.9380638774450922,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3504380969</P></DevI>
+			<DevI id="n_778" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.036041073187036,"u":5.532129849213961,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4030034612</P></DevI>
+			<DevI id="n_779" type="neuron"><P>"a":0.02,"b":0.2,"v":-60.87247162120708,"u":3.546029616044054,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3086997644</P></DevI>
+			<DevI id="n_780" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.85555286586619,"u":7.431530610291767,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3629411906</P></DevI>
+			<DevI id="n_781" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.69725518199219,"u":7.418396382438934,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1338244277</P></DevI>
+			<DevI id="n_782" type="neuron"><P>"a":0.02,"b":0.2,"v":-52.572246467843264,"u":7.991639324589705,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1801011093</P></DevI>
+			<DevI id="n_783" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.006178982713706,"u":3.554360018949157,"Ir":5.0,"fanin":1000,"refractory":0,"seed":4090145982</P></DevI>
+			<DevI id="n_784" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.14854778761572,"u":5.178562759733627,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2187744816</P></DevI>
+			<DevI id="n_785" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.68492066157965,"u":7.993798410224862,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3810968947</P></DevI>
+			<DevI id="n_786" type="neuron"><P>"a":0.02,"b":0.2,"v":-55.17680604132694,"u":6.718731062203747,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1404326444</P></DevI>
+			<DevI id="n_787" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.98182141610689,"u":6.0621918932928,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2720702214</P></DevI>
+			<DevI id="n_788" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.93464386854768,"u":7.50257748434804,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1833887597</P></DevI>
+			<DevI id="n_789" type="neuron"><P>"a":0.02,"b":0.2,"v":-58.64584086424672,"u":6.094052827577228,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3122519126</P></DevI>
+			<DevI id="n_790" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.17611834667312,"u":7.097842567038843,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1684655200</P></DevI>
+			<DevI id="n_791" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.234532465737686,"u":4.194648781844913,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2268803727</P></DevI>
+			<DevI id="n_792" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.97094942792516,"u":6.845496748598588,"Ir":5.0,"fanin":1000,"refractory":0,"seed":1531325055</P></DevI>
+			<DevI id="n_793" type="neuron"><P>"a":0.02,"b":0.2,"v":-57.27041863756804,"u":7.996304189938326,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3033994483</P></DevI>
+			<DevI id="n_794" type="neuron"><P>"a":0.02,"b":0.2,"v":-53.66219730063996,"u":7.956350782456926,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2725105660</P></DevI>
+			<DevI id="n_795" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.8819359077137,"u":7.525172927242454,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2507867011</P></DevI>
+			<DevI id="n_796" type="neuron"><P>"a":0.02,"b":0.2,"v":-51.133539614753644,"u":4.295697496198715,"Ir":5.0,"fanin":1000,"refractory":0,"seed":3131581783</P></DevI>
+			<DevI id="n_797" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.53322988225939,"u":3.1548761445448044,"Ir":5.0,"fanin":1000,"refractory":0,"seed":249424289</P></DevI>
+			<DevI id="n_798" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.9975263764416,"u":6.80367502453783,"Ir":5.0,"fanin":1000,"refractory":0,"seed":2759688081</P></DevI>
+			<DevI id="n_799" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.62706428705759,"u":6.100525468174195,"Ir":5.0,"fanin":1000,"refractory":0,"seed":905711550</P></DevI>
+			<DevI id="n_800" type="neuron"><P>"a":0.0330509980973959,"b":0.24270660824754947,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2748196497</P></DevI>
+			<DevI id="n_801" type="neuron"><P>"a":0.02857102383223828,"b":0.20530620119061133,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2778434458</P></DevI>
+			<DevI id="n_802" type="neuron"><P>"a":0.08508194626936255,"b":0.21413919638494203,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1480479815</P></DevI>
+			<DevI id="n_803" type="neuron"><P>"a":0.056451406487555436,"b":0.24806120999559414,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1145064866</P></DevI>
+			<DevI id="n_804" type="neuron"><P>"a":0.07706049748935193,"b":0.2455494422829824,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3841632810</P></DevI>
+			<DevI id="n_805" type="neuron"><P>"a":0.03471841383202319,"b":0.2178631546896279,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3831536951</P></DevI>
+			<DevI id="n_806" type="neuron"><P>"a":0.06356787533872256,"b":0.23554670254987203,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2872280119</P></DevI>
+			<DevI id="n_807" type="neuron"><P>"a":0.05248852522675648,"b":0.22514137066655107,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2576150145</P></DevI>
+			<DevI id="n_808" type="neuron"><P>"a":0.09831134209513324,"b":0.2296471927029495,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2430376568</P></DevI>
+			<DevI id="n_809" type="neuron"><P>"a":0.02755312937829774,"b":0.2180807454828387,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":833189066</P></DevI>
+			<DevI id="n_810" type="neuron"><P>"a":0.07856904056524924,"b":0.23769480692431066,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":905454968</P></DevI>
+			<DevI id="n_811" type="neuron"><P>"a":0.07890299197723769,"b":0.23626419153772238,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2700894633</P></DevI>
+			<DevI id="n_812" type="neuron"><P>"a":0.08491813345332026,"b":0.20828463929708332,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1330249035</P></DevI>
+			<DevI id="n_813" type="neuron"><P>"a":0.09633661080403563,"b":0.23512863767578393,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1891432588</P></DevI>
+			<DevI id="n_814" type="neuron"><P>"a":0.029687238222395634,"b":0.23120051062541355,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":104259957</P></DevI>
+			<DevI id="n_815" type="neuron"><P>"a":0.09332222093062928,"b":0.2348414464475658,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1800211995</P></DevI>
+			<DevI id="n_816" type="neuron"><P>"a":0.07439492367638317,"b":0.24813295014272763,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3040168328</P></DevI>
+			<DevI id="n_817" type="neuron"><P>"a":0.060315859865325464,"b":0.21288427176464036,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3924230411</P></DevI>
+			<DevI id="n_818" type="neuron"><P>"a":0.07541634512870547,"b":0.22257559578308078,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":154092524</P></DevI>
+			<DevI id="n_819" type="neuron"><P>"a":0.03445570510406207,"b":0.2464458479543938,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":398672003</P></DevI>
+			<DevI id="n_820" type="neuron"><P>"a":0.05797325951082062,"b":0.23182907324789537,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2077879076</P></DevI>
+			<DevI id="n_821" type="neuron"><P>"a":0.056779030829496716,"b":0.2362233413273113,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2854091327</P></DevI>
+			<DevI id="n_822" type="neuron"><P>"a":0.06806274027302296,"b":0.2024525030675824,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3390740461</P></DevI>
+			<DevI id="n_823" type="neuron"><P>"a":0.06726728800385702,"b":0.24719292679771587,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3375048593</P></DevI>
+			<DevI id="n_824" type="neuron"><P>"a":0.06219378841630835,"b":0.23009724740417323,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1975934441</P></DevI>
+			<DevI id="n_825" type="neuron"><P>"a":0.08582588463155154,"b":0.24490685606519771,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2040655531</P></DevI>
+			<DevI id="n_826" type="neuron"><P>"a":0.05563973071006173,"b":0.23119643707926124,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3446643551</P></DevI>
+			<DevI id="n_827" type="neuron"><P>"a":0.07138132932746044,"b":0.23298521754282644,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":479761178</P></DevI>
+			<DevI id="n_828" type="neuron"><P>"a":0.0779714723185117,"b":0.24436796114397788,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":507709479</P></DevI>
+			<DevI id="n_829" type="neuron"><P>"a":0.05669468761676778,"b":0.21994425440814014,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3519867902</P></DevI>
+			<DevI id="n_830" type="neuron"><P>"a":0.07135901646633351,"b":0.20620507367279955,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2409243176</P></DevI>
+			<DevI id="n_831" type="neuron"><P>"a":0.03296279939323435,"b":0.21036046578884143,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2894115983</P></DevI>
+			<DevI id="n_832" type="neuron"><P>"a":0.06968315270421624,"b":0.20690602770306016,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":378614650</P></DevI>
+			<DevI id="n_833" type="neuron"><P>"a":0.05227069117709951,"b":0.20273977501660334,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":906121757</P></DevI>
+			<DevI id="n_834" type="neuron"><P>"a":0.06827366046813073,"b":0.20539645575536544,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1904646669</P></DevI>
+			<DevI id="n_835" type="neuron"><P>"a":0.0849435903472516,"b":0.24686832514486629,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1692917286</P></DevI>
+			<DevI id="n_836" type="neuron"><P>"a":0.021329634958960248,"b":0.21477628597859832,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1140992920</P></DevI>
+			<DevI id="n_837" type="neuron"><P>"a":0.09650585084014095,"b":0.22450888153689555,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3888769643</P></DevI>
+			<DevI id="n_838" type="neuron"><P>"a":0.0707125656691378,"b":0.2139852439553868,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2773148954</P></DevI>
+			<DevI id="n_839" type="neuron"><P>"a":0.05110866808625691,"b":0.21271277282209639,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1946435934</P></DevI>
+			<DevI id="n_840" type="neuron"><P>"a":0.05565551977120392,"b":0.22806052382712938,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":4176722626</P></DevI>
+			<DevI id="n_841" type="neuron"><P>"a":0.08739389545668451,"b":0.20571926211401,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3605376090</P></DevI>
+			<DevI id="n_842" type="neuron"><P>"a":0.03739909752130412,"b":0.2152517972774672,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":4096307025</P></DevI>
+			<DevI id="n_843" type="neuron"><P>"a":0.025817065747761436,"b":0.21797922375281753,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2272043668</P></DevI>
+			<DevI id="n_844" type="neuron"><P>"a":0.02021564353930706,"b":0.22937018081391025,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":386612613</P></DevI>
+			<DevI id="n_845" type="neuron"><P>"a":0.022731786378752228,"b":0.22283889327619388,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2247776251</P></DevI>
+			<DevI id="n_846" type="neuron"><P>"a":0.05914917371430188,"b":0.2329036303332559,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3344818335</P></DevI>
+			<DevI id="n_847" type="neuron"><P>"a":0.06349950093113632,"b":0.2421644943954393,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":571876889</P></DevI>
+			<DevI id="n_848" type="neuron"><P>"a":0.04846177360111495,"b":0.24985057922682596,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":704496172</P></DevI>
+			<DevI id="n_849" type="neuron"><P>"a":0.06281732319066599,"b":0.23460766977318112,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2854100232</P></DevI>
+			<DevI id="n_850" type="neuron"><P>"a":0.044175296988222895,"b":0.23191440111345446,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1467679863</P></DevI>
+			<DevI id="n_851" type="neuron"><P>"a":0.028932026885576986,"b":0.22772273076167868,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2477987548</P></DevI>
+			<DevI id="n_852" type="neuron"><P>"a":0.060230066110364563,"b":0.23507289168791357,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":913747802</P></DevI>
+			<DevI id="n_853" type="neuron"><P>"a":0.027666070871356637,"b":0.23953867297694995,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":417236878</P></DevI>
+			<DevI id="n_854" type="neuron"><P>"a":0.038677107629718446,"b":0.2349411942423551,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":707292624</P></DevI>
+			<DevI id="n_855" type="neuron"><P>"a":0.06692914057502351,"b":0.24808960476964864,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3823149985</P></DevI>
+			<DevI id="n_856" type="neuron"><P>"a":0.035231451821406995,"b":0.23191048882490098,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2226507723</P></DevI>
+			<DevI id="n_857" type="neuron"><P>"a":0.05140491576200433,"b":0.24918631259132287,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3046938898</P></DevI>
+			<DevI id="n_858" type="neuron"><P>"a":0.06357504990617274,"b":0.21720896911245274,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":4236226854</P></DevI>
+			<DevI id="n_859" type="neuron"><P>"a":0.021442441033463277,"b":0.200931303387104,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1203710533</P></DevI>
+			<DevI id="n_860" type="neuron"><P>"a":0.06336472506033208,"b":0.2361272425486306,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":809188060</P></DevI>
+			<DevI id="n_861" type="neuron"><P>"a":0.029014779725086797,"b":0.248924054652012,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3706472175</P></DevI>
+			<DevI id="n_862" type="neuron"><P>"a":0.044804207900914765,"b":0.20246096138373076,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":971574729</P></DevI>
+			<DevI id="n_863" type="neuron"><P>"a":0.0946261643995647,"b":0.213284125962931,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1725100527</P></DevI>
+			<DevI id="n_864" type="neuron"><P>"a":0.09031295289108729,"b":0.20550668646583395,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":523792007</P></DevI>
+			<DevI id="n_865" type="neuron"><P>"a":0.0943241553551071,"b":0.20170376449865868,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3667111708</P></DevI>
+			<DevI id="n_866" type="neuron"><P>"a":0.07642577233572517,"b":0.20615200128500605,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3647010269</P></DevI>
+			<DevI id="n_867" type="neuron"><P>"a":0.06514317904558532,"b":0.22511158389951016,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":263932968</P></DevI>
+			<DevI id="n_868" type="neuron"><P>"a":0.08803317867248676,"b":0.2095421679277158,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":4193818690</P></DevI>
+			<DevI id="n_869" type="neuron"><P>"a":0.09627442672506203,"b":0.24763636956288093,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3977102627</P></DevI>
+			<DevI id="n_870" type="neuron"><P>"a":0.03632095573570107,"b":0.22789116780846247,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1287979440</P></DevI>
+			<DevI id="n_871" type="neuron"><P>"a":0.0269080702863193,"b":0.2183678731356881,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3326666119</P></DevI>
+			<DevI id="n_872" type="neuron"><P>"a":0.034513767649923616,"b":0.23414269283431444,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":124656347</P></DevI>
+			<DevI id="n_873" type="neuron"><P>"a":0.03629145663883626,"b":0.2377186806284174,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3970324212</P></DevI>
+			<DevI id="n_874" type="neuron"><P>"a":0.04623774834421306,"b":0.2465964417726448,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1691365008</P></DevI>
+			<DevI id="n_875" type="neuron"><P>"a":0.09869458239658416,"b":0.21174019587436788,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":4289196284</P></DevI>
+			<DevI id="n_876" type="neuron"><P>"a":0.07477224688422178,"b":0.21752000038070365,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2786883695</P></DevI>
+			<DevI id="n_877" type="neuron"><P>"a":0.0793470810609095,"b":0.22118815388917765,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1371939501</P></DevI>
+			<DevI id="n_878" type="neuron"><P>"a":0.04681174560202945,"b":0.20219382975651445,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3643631956</P></DevI>
+			<DevI id="n_879" type="neuron"><P>"a":0.07158207130694581,"b":0.20135908793979418,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2935727024</P></DevI>
+			<DevI id="n_880" type="neuron"><P>"a":0.06924248177664226,"b":0.2311464423134138,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1564820894</P></DevI>
+			<DevI id="n_881" type="neuron"><P>"a":0.07871197067480447,"b":0.20347917559022494,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2313638233</P></DevI>
+			<DevI id="n_882" type="neuron"><P>"a":0.043183670196421914,"b":0.24913296741357757,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2903876887</P></DevI>
+			<DevI id="n_883" type="neuron"><P>"a":0.04940610945748663,"b":0.22488479077454632,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3490352370</P></DevI>
+			<DevI id="n_884" type="neuron"><P>"a":0.07518433166340086,"b":0.20589649421179462,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2163778990</P></DevI>
+			<DevI id="n_885" type="neuron"><P>"a":0.08539570801850042,"b":0.2350236880927916,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":195158951</P></DevI>
+			<DevI id="n_886" type="neuron"><P>"a":0.0991599460804774,"b":0.20298316113852455,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1722554791</P></DevI>
+			<DevI id="n_887" type="neuron"><P>"a":0.0563217297889321,"b":0.21014970040129546,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3035248239</P></DevI>
+			<DevI id="n_888" type="neuron"><P>"a":0.034689671259110086,"b":0.2449808546813336,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":940837445</P></DevI>
+			<DevI id="n_889" type="neuron"><P>"a":0.047748482659870514,"b":0.24369038047959957,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":4156753797</P></DevI>
+			<DevI id="n_890" type="neuron"><P>"a":0.08456570280813848,"b":0.24386155106972815,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2941747571</P></DevI>
+			<DevI id="n_891" type="neuron"><P>"a":0.05043961234606069,"b":0.219812361797115,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1074624526</P></DevI>
+			<DevI id="n_892" type="neuron"><P>"a":0.08554489015802527,"b":0.209986255035173,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3852210007</P></DevI>
+			<DevI id="n_893" type="neuron"><P>"a":0.06974986435151637,"b":0.2146309301516236,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1722966428</P></DevI>
+			<DevI id="n_894" type="neuron"><P>"a":0.07778778786283896,"b":0.24652802229981097,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1632170279</P></DevI>
+			<DevI id="n_895" type="neuron"><P>"a":0.0982765771420842,"b":0.20861103785319832,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":250564419</P></DevI>
+			<DevI id="n_896" type="neuron"><P>"a":0.052411095725847096,"b":0.24613860811724433,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1487357203</P></DevI>
+			<DevI id="n_897" type="neuron"><P>"a":0.054597105672694074,"b":0.22147751409860858,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2524161728</P></DevI>
+			<DevI id="n_898" type="neuron"><P>"a":0.0978544332645315,"b":0.24602766781398633,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2494962267</P></DevI>
+			<DevI id="n_899" type="neuron"><P>"a":0.09410425634236824,"b":0.21741243106453526,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3746706422</P></DevI>
+			<DevI id="n_900" type="neuron"><P>"a":0.07071022560784533,"b":0.22308372821057249,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":4186785195</P></DevI>
+			<DevI id="n_901" type="neuron"><P>"a":0.09332440033832021,"b":0.2237273309226664,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3837461608</P></DevI>
+			<DevI id="n_902" type="neuron"><P>"a":0.02055820712168881,"b":0.23670562659019403,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":4187348515</P></DevI>
+			<DevI id="n_903" type="neuron"><P>"a":0.08115783929815516,"b":0.2450544498863336,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1487392454</P></DevI>
+			<DevI id="n_904" type="neuron"><P>"a":0.034639013746710516,"b":0.24786453632547872,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2383030367</P></DevI>
+			<DevI id="n_905" type="neuron"><P>"a":0.02847668093753012,"b":0.2359694892367787,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3597720470</P></DevI>
+			<DevI id="n_906" type="neuron"><P>"a":0.08583900296641803,"b":0.23677930429264518,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1875878695</P></DevI>
+			<DevI id="n_907" type="neuron"><P>"a":0.09541590067946129,"b":0.2451916228660132,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2038402741</P></DevI>
+			<DevI id="n_908" type="neuron"><P>"a":0.030260133997909923,"b":0.22598953083589363,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":76871313</P></DevI>
+			<DevI id="n_909" type="neuron"><P>"a":0.021712226779793148,"b":0.21643377433639627,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3069463675</P></DevI>
+			<DevI id="n_910" type="neuron"><P>"a":0.04655795103923835,"b":0.20747282847879625,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":4289784337</P></DevI>
+			<DevI id="n_911" type="neuron"><P>"a":0.08721429958466742,"b":0.22089521904620585,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2889521333</P></DevI>
+			<DevI id="n_912" type="neuron"><P>"a":0.04504110009413523,"b":0.21655323269953058,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3684368428</P></DevI>
+			<DevI id="n_913" type="neuron"><P>"a":0.059097775306984776,"b":0.24351891878833817,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2087273140</P></DevI>
+			<DevI id="n_914" type="neuron"><P>"a":0.026498130045616214,"b":0.20226875276288203,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3823591594</P></DevI>
+			<DevI id="n_915" type="neuron"><P>"a":0.08707613226371769,"b":0.24312786204363382,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":4147177526</P></DevI>
+			<DevI id="n_916" type="neuron"><P>"a":0.02958642831875757,"b":0.21197971093649087,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2450740144</P></DevI>
+			<DevI id="n_917" type="neuron"><P>"a":0.0795901574573084,"b":0.2347877818677347,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2152455555</P></DevI>
+			<DevI id="n_918" type="neuron"><P>"a":0.09002725694086475,"b":0.21892680801116343,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2334468996</P></DevI>
+			<DevI id="n_919" type="neuron"><P>"a":0.08698155151393763,"b":0.2476884973399474,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1340456007</P></DevI>
+			<DevI id="n_920" type="neuron"><P>"a":0.06222357365648608,"b":0.23840306573367379,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3253498493</P></DevI>
+			<DevI id="n_921" type="neuron"><P>"a":0.05929077330120357,"b":0.20425628238952998,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":435399021</P></DevI>
+			<DevI id="n_922" type="neuron"><P>"a":0.03710983548144465,"b":0.22632436650217097,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2287780882</P></DevI>
+			<DevI id="n_923" type="neuron"><P>"a":0.07941075411807885,"b":0.20261432205357718,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1867788159</P></DevI>
+			<DevI id="n_924" type="neuron"><P>"a":0.02771907533703529,"b":0.21126395456970304,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3474113598</P></DevI>
+			<DevI id="n_925" type="neuron"><P>"a":0.03388921446096765,"b":0.24805276938566098,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1154142381</P></DevI>
+			<DevI id="n_926" type="neuron"><P>"a":0.07379492858019976,"b":0.2125911102741279,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3932279626</P></DevI>
+			<DevI id="n_927" type="neuron"><P>"a":0.07808019802772419,"b":0.24714475593146445,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2745490018</P></DevI>
+			<DevI id="n_928" type="neuron"><P>"a":0.058638948046171285,"b":0.2059280043881772,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2420992920</P></DevI>
+			<DevI id="n_929" type="neuron"><P>"a":0.029997664493641406,"b":0.23486401765209725,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3992535423</P></DevI>
+			<DevI id="n_930" type="neuron"><P>"a":0.027203775391989586,"b":0.23728235138556786,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":584426240</P></DevI>
+			<DevI id="n_931" type="neuron"><P>"a":0.07600601900142386,"b":0.2330692350253677,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3493081047</P></DevI>
+			<DevI id="n_932" type="neuron"><P>"a":0.0278651022942122,"b":0.21357425746433828,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2496953616</P></DevI>
+			<DevI id="n_933" type="neuron"><P>"a":0.042733293653267106,"b":0.2456425183428257,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3260056359</P></DevI>
+			<DevI id="n_934" type="neuron"><P>"a":0.07351002176844515,"b":0.24480598103144766,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3377072292</P></DevI>
+			<DevI id="n_935" type="neuron"><P>"a":0.0387285424765403,"b":0.24313626801901622,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3846444572</P></DevI>
+			<DevI id="n_936" type="neuron"><P>"a":0.08912306736509389,"b":0.22804248340478667,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3182175559</P></DevI>
+			<DevI id="n_937" type="neuron"><P>"a":0.06757009129105096,"b":0.24285897026818154,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":762433433</P></DevI>
+			<DevI id="n_938" type="neuron"><P>"a":0.059743424020908556,"b":0.23727847286488862,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":357859201</P></DevI>
+			<DevI id="n_939" type="neuron"><P>"a":0.054869123181916,"b":0.2456598264800526,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":592345955</P></DevI>
+			<DevI id="n_940" type="neuron"><P>"a":0.05905597024053272,"b":0.2403855504921167,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3725116805</P></DevI>
+			<DevI id="n_941" type="neuron"><P>"a":0.06464355009938656,"b":0.22468320568305788,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1838551734</P></DevI>
+			<DevI id="n_942" type="neuron"><P>"a":0.03668962373052734,"b":0.2384801754418239,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1726190358</P></DevI>
+			<DevI id="n_943" type="neuron"><P>"a":0.028729753963110297,"b":0.23305284250286393,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1682453463</P></DevI>
+			<DevI id="n_944" type="neuron"><P>"a":0.09631588610779351,"b":0.2021196322171315,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2732327048</P></DevI>
+			<DevI id="n_945" type="neuron"><P>"a":0.023552820880013668,"b":0.22728747535043708,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":168022512</P></DevI>
+			<DevI id="n_946" type="neuron"><P>"a":0.09531678725500668,"b":0.21952564996538612,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2458059689</P></DevI>
+			<DevI id="n_947" type="neuron"><P>"a":0.08973069109429097,"b":0.244661102227217,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1754615947</P></DevI>
+			<DevI id="n_948" type="neuron"><P>"a":0.07559451191149816,"b":0.23557371283417608,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2207080533</P></DevI>
+			<DevI id="n_949" type="neuron"><P>"a":0.025948886575659913,"b":0.20346615375834173,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":323338948</P></DevI>
+			<DevI id="n_950" type="neuron"><P>"a":0.026407104354072786,"b":0.22197472030522117,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2731892874</P></DevI>
+			<DevI id="n_951" type="neuron"><P>"a":0.06918335294172605,"b":0.24874559133270568,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3464949563</P></DevI>
+			<DevI id="n_952" type="neuron"><P>"a":0.08567228964254225,"b":0.22517622704355464,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2186058373</P></DevI>
+			<DevI id="n_953" type="neuron"><P>"a":0.07944664199107696,"b":0.22537166441221732,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2086049161</P></DevI>
+			<DevI id="n_954" type="neuron"><P>"a":0.09381493194465068,"b":0.24067769123033708,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2013606676</P></DevI>
+			<DevI id="n_955" type="neuron"><P>"a":0.046700381595888865,"b":0.24019924588431676,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":988607250</P></DevI>
+			<DevI id="n_956" type="neuron"><P>"a":0.052139208355554884,"b":0.22739190952670055,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2166094410</P></DevI>
+			<DevI id="n_957" type="neuron"><P>"a":0.04884801052918813,"b":0.24424835230630026,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":4059507033</P></DevI>
+			<DevI id="n_958" type="neuron"><P>"a":0.09296877688665643,"b":0.2037901296983051,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3370669688</P></DevI>
+			<DevI id="n_959" type="neuron"><P>"a":0.030807060069721025,"b":0.24846500090717638,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1451033475</P></DevI>
+			<DevI id="n_960" type="neuron"><P>"a":0.059328920101078986,"b":0.22622540326803653,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3328419580</P></DevI>
+			<DevI id="n_961" type="neuron"><P>"a":0.08800981290913747,"b":0.22906335527360333,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2305809710</P></DevI>
+			<DevI id="n_962" type="neuron"><P>"a":0.09424096040723343,"b":0.23260118187780918,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2371067493</P></DevI>
+			<DevI id="n_963" type="neuron"><P>"a":0.09411684586542012,"b":0.23602030821460745,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1013386320</P></DevI>
+			<DevI id="n_964" type="neuron"><P>"a":0.026733416852213622,"b":0.2053777670096416,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":4233029034</P></DevI>
+			<DevI id="n_965" type="neuron"><P>"a":0.08723306432203524,"b":0.20098008708717213,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1401654137</P></DevI>
+			<DevI id="n_966" type="neuron"><P>"a":0.08136661118025652,"b":0.22307789673067996,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":648606560</P></DevI>
+			<DevI id="n_967" type="neuron"><P>"a":0.02056404545679512,"b":0.2435368141585645,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3224920685</P></DevI>
+			<DevI id="n_968" type="neuron"><P>"a":0.02325232656074043,"b":0.24915870363794873,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1076013765</P></DevI>
+			<DevI id="n_969" type="neuron"><P>"a":0.09056889434764664,"b":0.21029720179921213,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":827641687</P></DevI>
+			<DevI id="n_970" type="neuron"><P>"a":0.09934229050692377,"b":0.21625913355800605,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3776702658</P></DevI>
+			<DevI id="n_971" type="neuron"><P>"a":0.02205722154617651,"b":0.22031388735870044,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3277174167</P></DevI>
+			<DevI id="n_972" type="neuron"><P>"a":0.08469820029305877,"b":0.20442730051573083,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3771426487</P></DevI>
+			<DevI id="n_973" type="neuron"><P>"a":0.03126267311164875,"b":0.21674547648705336,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3295838063</P></DevI>
+			<DevI id="n_974" type="neuron"><P>"a":0.055183151140366024,"b":0.2213010720293868,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2480202283</P></DevI>
+			<DevI id="n_975" type="neuron"><P>"a":0.06357132473949118,"b":0.2090076267347394,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":4198186514</P></DevI>
+			<DevI id="n_976" type="neuron"><P>"a":0.025338078608452018,"b":0.23755496695590494,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1347364476</P></DevI>
+			<DevI id="n_977" type="neuron"><P>"a":0.020816243596910936,"b":0.24353208542925572,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1254925521</P></DevI>
+			<DevI id="n_978" type="neuron"><P>"a":0.09997480187145791,"b":0.21856706872079584,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2365868561</P></DevI>
+			<DevI id="n_979" type="neuron"><P>"a":0.027345053906360307,"b":0.21382611421589576,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":306994683</P></DevI>
+			<DevI id="n_980" type="neuron"><P>"a":0.03498584417489605,"b":0.2024930980988023,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2299556014</P></DevI>
+			<DevI id="n_981" type="neuron"><P>"a":0.04492312966185001,"b":0.20426210722444554,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3193073376</P></DevI>
+			<DevI id="n_982" type="neuron"><P>"a":0.08145946537337909,"b":0.2427854522160198,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2495319459</P></DevI>
+			<DevI id="n_983" type="neuron"><P>"a":0.0839293416423054,"b":0.2428689096680839,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3634684995</P></DevI>
+			<DevI id="n_984" type="neuron"><P>"a":0.05924798919846025,"b":0.20661965713588124,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":4064542002</P></DevI>
+			<DevI id="n_985" type="neuron"><P>"a":0.09651804792365379,"b":0.23409440450287783,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3433151078</P></DevI>
+			<DevI id="n_986" type="neuron"><P>"a":0.020159484831361756,"b":0.21308087246917884,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3968001332</P></DevI>
+			<DevI id="n_987" type="neuron"><P>"a":0.0950861250728274,"b":0.20568326091168213,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2388315807</P></DevI>
+			<DevI id="n_988" type="neuron"><P>"a":0.048777090587041105,"b":0.2096441993997351,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1305223839</P></DevI>
+			<DevI id="n_989" type="neuron"><P>"a":0.08947077428786122,"b":0.2097795955348218,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2536751276</P></DevI>
+			<DevI id="n_990" type="neuron"><P>"a":0.06730010039418442,"b":0.22568133514707994,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":302178238</P></DevI>
+			<DevI id="n_991" type="neuron"><P>"a":0.09026642279700853,"b":0.21282489677982777,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3290034127</P></DevI>
+			<DevI id="n_992" type="neuron"><P>"a":0.058012694219912786,"b":0.20540727359347993,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3468024159</P></DevI>
+			<DevI id="n_993" type="neuron"><P>"a":0.058548583402144264,"b":0.2479953866171225,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":726386106</P></DevI>
+			<DevI id="n_994" type="neuron"><P>"a":0.0680682631223507,"b":0.23827527167798354,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":3631363955</P></DevI>
+			<DevI id="n_995" type="neuron"><P>"a":0.034736090763377254,"b":0.23899848674822013,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1977946174</P></DevI>
+			<DevI id="n_996" type="neuron"><P>"a":0.08162778947698499,"b":0.23266339511101974,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2396731031</P></DevI>
+			<DevI id="n_997" type="neuron"><P>"a":0.03312441659059427,"b":0.23905726484897638,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2844622376</P></DevI>
+			<DevI id="n_998" type="neuron"><P>"a":0.07720675425964288,"b":0.24839399960710254,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":1432422230</P></DevI>
+			<DevI id="n_999" type="neuron"><P>"a":0.03850031534636435,"b":0.21566670999678275,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":1000,"refractory":0,"seed":2342316413</P></DevI>
+		</DeviceInstances>
+		<EdgeInstances>

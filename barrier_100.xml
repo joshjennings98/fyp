@@ -1,6 +1,6 @@
 <?xml version='1.0'?>
 <Graphs xmlns="https://poets-project.org/schemas/virtual-graph-schema-v3">
-	<GraphType xmlns="https://poets-project.org/schemas/virtual-graph-schema-v3" id="test_network"> 
+	<GraphType xmlns="https://poets-project.org/schemas/virtual-graph-schema-v3" id="barrier_100"> 
 		<Properties> 
 			<Scalar name="max_t" type="uint32_t"/> 
 		</Properties> 
@@ -165,8 +165,8 @@ float grng(uint32_t &state)
 			]]>
 		</SharedCode> 
 		<MessageTypes> 
-			<MessageType id="synapse"> 
-				<Message> 
+			<MessageType id="spike"> 
+				<Message>
 					<Scalar name="fired" type="int8_t"/> 
 				</Message>
 			</MessageType> 
@@ -175,7 +175,6 @@ float grng(uint32_t &state)
 			<DeviceType id="neuron"> 
 				<Properties> 
 					<Scalar name="seed" type="uint32_t"/>
-
 					<Scalar name="refractory" type="uint32_t" default="0"/> 
 					<Scalar name="a" type="float" default="0.02"/>
 					<Scalar name="b" type="float" default="0.2"/>
@@ -186,11 +185,11 @@ float grng(uint32_t &state)
 				</Properties> 
 				<State> 
 					<Scalar name="rng" type="uint32_t"/> 
-					<Scalar name="pendingFires" type="uint32_t"/>
-					<Scalar name="rts" type="uint32_t"/> 
 					<Scalar name="t" type="uint32_t"/>
 					<Scalar name="finishRefractory" type="uint32_t"/>
 					<Scalar name="I" type="float"/> 
+					<Scalar name="Icount" type="uint32_t"/>
+					<Scalar name="fireValue" type="uint32_t"/> 
 					<Scalar name="a" type="float"/>
 					<Scalar name="b" type="float"/>
 					<Scalar name="v" type="float"/>
@@ -210,67 +209,67 @@ float grng(uint32_t &state)
 
 					deviceState->rng = deviceProperties->seed;
 					deviceState->I=deviceProperties->Ir * grng(deviceState->rng);
-					deviceState->pendingFires=1;
-					deviceState->finishRefractory=0;
-					deviceState->rts = RTS_FLAG_fire;		   
+					deviceState->Icount=0;
 					]]>
 				</OnInit> 
-				<InputPin name="input" messageTypeId="synapse"> 
+				<InputPin name="input" messageTypeId="spike"> 
 					<Properties> 
 					<Scalar name="weight" type="float"/> 
 					</Properties> 
 					<OnReceive>
 						<![CDATA[ 
-							deviceState->I += edgeProperties->weight; // fire at 1, (1 * weight) = weight so just add weight
-							deviceState->pendingFires++;
+							deviceState->Icount++;
+							deviceState->I += edgeProperties->weight;
 						]]>
 					</OnReceive> 
 				</InputPin> 
-				<OutputPin name="fire" messageTypeId="synapse"> 
-					<OnSend>
-						<![CDATA[ 
-						// Assignments
-						float &a = deviceState->a; // Assign a
+				<OnHardwareIdle>
+					<![CDATA[
+										float &a = deviceState->a; // Assign a
 						float &b = deviceState->b; // Assign b
 						float &v = deviceState->v; // Assign v
 						float &u = deviceState->u; // Assign u
-						float &Ir = deviceState->Ir; // Assign Ir
-						float &I = deviceState->I; // Assign I
-
-						if (deviceState->t >= deviceState->finishRefractory) {
-							v += 0.04 * v * v + 5 * v + 140 - u + I;
+						float &Ir = deviceState->Ir; // Assign Ir 
+						float &I=deviceState->I;
+										v += 0.04 * v * v + 5 * v + 140 - u + I;
 							u += a * (b * v - u);
-						}
-
-						//// handler_log(1, "v=%f, u=%f, I=%f", deviceState->v, deviceState->u, deviceState->I);
-						message->fired = v >= 30;
-						if(message->fired){
-							// handler_log(1, "FIRE! %i", deviceState->t);
-							deviceState->finishRefractory = deviceState->t + deviceProperties->refractory;
-							v = deviceProperties->v;
+						deviceState->t++;
+						bool fire = v >= 30;
+						if(fire){
+							 handler_log(1, "FIRE! %i", deviceState->t);
+							// handler_log(1, "v = %f", deviceState->v);
+												v = deviceProperties->v;
 							u += deviceProperties->u;
 						}
-
+						deviceState->fireValue=fire;
 						deviceState->I=deviceProperties->Ir * grng(deviceState->rng);
-						deviceState->pendingFires--;
-						deviceState->t++;
-
-						if(deviceState->t > graphProperties->max_t && graphProperties->max_t != 0){
-							*doSend=0;
+						deviceState->Icount=0;
+					]]>
+				</OnHardwareIdle>
+				<OutputPin name="fire" messageTypeId="spike" indexed="false">
+				<OnSend>
+					<![CDATA[
+						if(deviceState->t > graphProperties->max_t){
+							*doSend=false;
 							fake_handler_exit(0);
 						}
-						]]>
-					</OnSend> 
-				</OutputPin> 
+						//// handler_log(1, "t = %u", deviceState->t);
+						deviceState->fireValue=false;
+					]]>
+				</OnSend>
+			</OutputPin>
 				<ReadyToSend>
 					<![CDATA[ 
-					*readyToSend = (deviceState->pendingFires > 0) ? RTS_FLAG_fire : 0;
+						*readyToSend=0;
+						if(deviceState->fireValue){
+							*readyToSend |= RTS_FLAG_fire;
+						}
 					]]>
 				</ReadyToSend> 
 			</DeviceType>
 		</DeviceTypes> 
 	</GraphType> 
-	<GraphInstance id="test_network_output" graphTypeId="test_network"> 
+	<GraphInstance id="barrier_100_output" graphTypeId="barrier_100"> 
 		<Properties> 
 			"max_t":1000
 		</Properties>

@@ -282,9 +282,15 @@ class Network(object):
                 f.write("".join(connections))
                 
             print("Generated all edges.")
-            print("Running test.")
+
             """
+
+            # THIS IS OLD STUFF USED FOR GENERATING GRAPHS WITH THE SAME PARAMS SO THEY CAN BE COMPARED TO HARDWARE
+
             ################################################################
+
+            print("Running test.")
+
 
             # test_model.py stuff
             propsfortest.append(('edges', np.array([np.array(xi) for xi in edges])))
@@ -441,6 +447,7 @@ class Network(object):
             print(f"Test results saved to {fname}")
 
             ################################################################
+            
             """
             
             f.write("\t\t</EdgeInstances>\n\t</GraphInstance>\n</Graphs>")

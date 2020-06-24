@@ -1,6 +1,6 @@
 <?xml version='1.0'?>
 <Graphs xmlns="https://poets-project.org/schemas/virtual-graph-schema-v3">
-	<GraphType xmlns="https://poets-project.org/schemas/virtual-graph-schema-v3" id="test_network"> 
+	<GraphType xmlns="https://poets-project.org/schemas/virtual-graph-schema-v3" id="gals_100"> 
 		<Properties> 
 			<Scalar name="max_t" type="uint32_t"/> 
 		</Properties> 
@@ -175,7 +175,6 @@ float grng(uint32_t &state)
 			<DeviceType id="neuron"> 
 				<Properties> 
 					<Scalar name="seed" type="uint32_t"/>
-
 					<Scalar name="refractory" type="uint32_t" default="0"/> 
 					<Scalar name="a" type="float" default="0.02"/>
 					<Scalar name="b" type="float" default="0.2"/>
@@ -186,11 +185,13 @@ float grng(uint32_t &state)
 				</Properties> 
 				<State> 
 					<Scalar name="rng" type="uint32_t"/> 
+					<Scalar name="Icount" type="uint32_t"/>
 					<Scalar name="pendingFires" type="uint32_t"/>
 					<Scalar name="rts" type="uint32_t"/> 
 					<Scalar name="t" type="uint32_t"/>
 					<Scalar name="finishRefractory" type="uint32_t"/>
 					<Scalar name="I" type="float"/> 
+					<Scalar name="message_count" type="uint32_t"/> 
 					<Scalar name="a" type="float"/>
 					<Scalar name="b" type="float"/>
 					<Scalar name="v" type="float"/>
@@ -210,9 +211,11 @@ float grng(uint32_t &state)
 
 					deviceState->rng = deviceProperties->seed;
 					deviceState->I=deviceProperties->Ir * grng(deviceState->rng);
+					deviceState->Icount=0;
+					deviceState->message_count=0;
 					deviceState->pendingFires=1;
 					deviceState->finishRefractory=0;
-					deviceState->rts = RTS_FLAG_fire;		   
+					deviceState->rts = RTS_FLAG_fire;		
 					]]>
 				</OnInit> 
 				<InputPin name="input" messageTypeId="synapse"> 
@@ -221,14 +224,23 @@ float grng(uint32_t &state)
 					</Properties> 
 					<OnReceive>
 						<![CDATA[ 
+						deviceState->Icount++;
+						if(message->fired){
 							deviceState->I += edgeProperties->weight; // fire at 1, (1 * weight) = weight so just add weight
+						}
+
+						if(deviceState->Icount >= deviceProperties->fanin-0){
 							deviceState->pendingFires++;
+							deviceState->Icount=0;
+						}
 						]]>
 					</OnReceive> 
 				</InputPin> 
 				<OutputPin name="fire" messageTypeId="synapse"> 
 					<OnSend>
-						<![CDATA[ 
+						<![CDATA[  
+						deviceState->message_count++;
+						handler_log(1, "%d", deviceState->message_count);
 						// Assignments
 						float &a = deviceState->a; // Assign a
 						float &b = deviceState->b; // Assign b
@@ -242,20 +254,21 @@ float grng(uint32_t &state)
 							u += a * (b * v - u);
 						}
 
-						//// handler_log(1, "v=%f, u=%f, I=%f", deviceState->v, deviceState->u, deviceState->I);
 						message->fired = v >= 30;
 						if(message->fired){
-							// handler_log(1, "FIRE! %i", deviceState->t);
+							//handler_log(1, "FIRE! %i", deviceState->t);
 							deviceState->finishRefractory = deviceState->t + deviceProperties->refractory;
 							v = deviceProperties->v;
 							u += deviceProperties->u;
 						}
 
 						deviceState->I=deviceProperties->Ir * grng(deviceState->rng);
+						deviceState->Icount=0;
 						deviceState->pendingFires--;
 						deviceState->t++;
 
 						if(deviceState->t > graphProperties->max_t && graphProperties->max_t != 0){
+							handler_log(1, "Total messages %d", deviceState->message_count);
 							*doSend=0;
 							fake_handler_exit(0);
 						}
@@ -270,7 +283,7 @@ float grng(uint32_t &state)
 			</DeviceType>
 		</DeviceTypes> 
 	</GraphType> 
-	<GraphInstance id="test_network_output" graphTypeId="test_network"> 
+	<GraphInstance id="gals_100_output" graphTypeId="gals_100"> 
 		<Properties> 
 			"max_t":1000
 		</Properties>

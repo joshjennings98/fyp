@@ -1,0 +1,393 @@
+<?xml version='1.0'?>
+<Graphs xmlns="https://poets-project.org/schemas/virtual-graph-schema-v3">
+	<GraphType xmlns="https://poets-project.org/schemas/virtual-graph-schema-v3" id="barrier_10"> 
+		<Properties> 
+			<Scalar name="max_t" type="uint32_t"/> 
+		</Properties> 
+		<SharedCode>
+			<![CDATA[ 
+			#ifdef POETS_LEGACY_HAS_HANDLER_EXIT 
+			#define _do_handler_exit(code) handler_exit(code) 
+			#else 
+			#define _do_handler_exit(code) ((void)0) 
+			#endif
+
+			#define fake_handler_exit(code) \
+			{ \
+				if((code)==0){ \
+					handler_log(0, "_HANDLER_EXIT_SUCCESS_9be65737_"); \
+				}else{ \
+					handler_log(0, "_HANDLER_EXIT_FAIL_9be65737_"); \
+				} \
+				_do_handler_exit(code); \
+			}
+			uint32_t urng(uint32_t &state)
+			{
+				state = state*1664525+1013904223;
+				return state;
+			}
+
+			// Worlds crappiest gaussian
+			float grngOG(uint32_t &state)
+			{
+				uint32_t u=urng(state);
+				int32_t acc=0;
+				for(unsigned i=0;i<8;i++){
+				acc += u&0xf;
+				u=u>>4;
+				}
+				// a four-bit uniform has mean 7.5 and variance ((15-0+1)^2-1)/12 = 85/4
+				// sum of four uniforms has mean 8*7.5=60 and variance of 8*85/4=170
+				const float scale=0.07669649888473704; // == 1/sqrt(170)
+				return (acc-60.0f) * scale;
+			} 
+
+// NEW SHIT
+
+float const pi = 3.14159265358979323846;
+float const two_pi = 2.0 * pi;
+float const half_pi = 0.5 * pi;
+
+float cosineCalc1(float x)
+{
+    const float c1 = 0.9999932946;
+    const float c2 = -0.4999124376;
+    const float c3 = 0.0414877472;
+    const float c4 = -0.0012712095;
+
+    float x2;
+
+    x2 = x * x; // x**2
+
+    return (c1 + x2 * (c2 + x2 * (c3 + c4 * x2)));
+}
+
+float cosineCalc(float x)
+{
+    const float c1 = 0.99940307;
+    const float c2 = -0.49558072;
+    const float c3 = 0.03679168;
+
+    float x2;
+
+    x2 = x * x; // x**2
+
+    return (c1 + x2 * (c2 + x2 * c3));
+}
+
+// Driver for cosine function, simplifies maths
+float cosine(float x)
+{
+    //return cos(x);
+    int quad; // quadrant
+
+    
+    // float modulo to get rid of x > 2pi
+    while (x > two_pi)
+        x -= two_pi;
+
+    // cos -x = cos x
+    if (x < 0)
+        x = -x;
+    
+
+    quad = int(x/half_pi);
+    switch (quad) {
+        case 0:
+            return cosineCalc(x);
+        case 1:
+            return -cosineCalc(pi-x);
+        case 2:
+            return -cosineCalc(x-pi);
+        case 3:
+            return cosineCalc(two_pi-x);
+    }
+}
+
+// sine is just cosine shifted by half pi
+float sine(float x)
+{
+    return cosine(half_pi - x);
+}
+
+float logarithm(float x)
+{
+    union { float f; uint32_t i; } vx = { x };
+    union { uint32_t i; float f; } mx = { (vx.i & 0x007FFFFF) | 0x3f000000 };
+  
+    float y = vx.i;
+    y *= 1.1920928955078125e-7f;
+
+    return y - 124.22551499f
+           - 1.498030302f * mx.f 
+           - 1.72587999f / (0.3520887068f + mx.f);
+}
+
+float squareroot(float x)
+{
+   unsigned int i = *(unsigned int*) &x; 
+   // adjust bias
+   i  += 127 << 23;
+   // approximation of square root
+   i >>= 1; 
+   return *(float*) &i;
+}
+
+float grng(uint32_t &state)
+{
+	float mu = 0, sigma = 1;
+	static const float epsilon = 1.7e-37;
+	// static const double two_pi = 2.0*3.14159265358979323846;
+
+	thread_local float z1;
+	thread_local bool generate;
+	generate = !generate;
+
+	if (!generate)
+	   return z1 * sigma + mu;
+
+	float u1, u2;
+
+    do
+    {
+        u1 = (float)urng(state) / 4294967295.0f;
+        u2 = (float)urng(state) / 4294967295.0f;
+    }
+    while (u1 <= epsilon);
+
+	float z0;
+	z0 = squareroot(-2.0 * logarithm(u1)) * cosine(two_pi * u2);
+	z1 = squareroot(-2.0 * logarithm(u1)) * sine(two_pi * u2);
+
+	return z0 * sigma + mu;
+}
+
+			]]>
+		</SharedCode> 
+		<MessageTypes> 
+			<MessageType id="spike"> 
+				<Message>
+					<Scalar name="fired" type="int8_t"/> 
+				</Message>
+			</MessageType> 
+		</MessageTypes> 
+		<DeviceTypes>
+			<DeviceType id="neuron"> 
+				<Properties> 
+					<Scalar name="seed" type="uint32_t"/>
+					<Scalar name="refractory" type="uint32_t" default="0"/> 
+					<Scalar name="a" type="float" default="0.02"/>
+					<Scalar name="b" type="float" default="0.2"/>
+					<Scalar name="v" type="float" default="-62.51231218883935"/>
+					<Scalar name="u" type="float" default="7.93040395636523"/>
+					<Scalar name="Ir" type="float" default="5.0"/>
+					<Scalar name="fanin" type="uint32_t" default="10"/> 
+				</Properties> 
+				<State> 
+					<Scalar name="rng" type="uint32_t"/> 
+					<Scalar name="t" type="uint32_t"/>
+					<Scalar name="finishRefractory" type="uint32_t"/>
+					<Scalar name="I" type="float"/> 
+					<Scalar name="Icount" type="uint32_t"/>
+					<Scalar name="fireValue" type="uint32_t"/> 
+					<Scalar name="a" type="float"/>
+					<Scalar name="b" type="float"/>
+					<Scalar name="v" type="float"/>
+					<Scalar name="u" type="float"/>
+					<Scalar name="Ir" type="float"/>
+				</State> 
+				<OnInit>
+					<![CDATA[
+					// Initialise state values
+					deviceState->a = deviceProperties->a; // Set initial a value
+					deviceState->b = deviceProperties->b; // Set initial b value
+					deviceState->v = deviceProperties->v; // Set initial v value
+					deviceState->u = deviceProperties->u; // Set initial u value
+					deviceState->Ir = deviceProperties->Ir; // Set initial Ir value
+			deviceState->v = 65; // Set initial v value
+					deviceState->u = deviceState->v*deviceState->b; // Set initial u value
+
+					deviceState->rng = deviceProperties->seed;
+					deviceState->I=deviceProperties->Ir * grng(deviceState->rng);
+					deviceState->Icount=0;
+					
+					handler_log(1, "INITING");
+					]]>
+				</OnInit> 
+				<InputPin name="input" messageTypeId="spike"> 
+					<Properties> 
+					<Scalar name="weight" type="float"/> 
+					</Properties> 
+					<OnReceive>
+						<![CDATA[ 
+							deviceState->Icount++;
+							deviceState->I += edgeProperties->weight;
+						]]>
+					</OnReceive> 
+				</InputPin> 
+				<OnHardwareIdle>
+					<![CDATA[
+										float &a = deviceState->a; // Assign a
+						float &b = deviceState->b; // Assign b
+						float &v = deviceState->v; // Assign v
+						float &u = deviceState->u; // Assign u
+						float &Ir = deviceState->Ir; // Assign Ir 
+						float &I=deviceState->I;
+										v += 0.04 * v * v + 5 * v + 140 - u + I;
+							u += a * (b * v - u);
+						deviceState->t++;
+						bool fire = v >= 30;
+						if(fire){
+							 handler_log(1, "FIRE! %i", deviceState->t);
+							// handler_log(1, "v = %f", deviceState->v);
+												v = deviceProperties->v;
+							u += deviceProperties->u;
+						}
+						deviceState->fireValue=fire;
+						deviceState->I=deviceProperties->Ir * grng(deviceState->rng);
+						deviceState->Icount=0;
+						handler_log("IDLE");
+					]]>
+				</OnHardwareIdle>
+				<OutputPin name="fire" messageTypeId="spike" indexed="false">
+				<OnSend>
+					<![CDATA[
+						if(deviceState->t > graphProperties->max_t){
+							*doSend=false;
+							fake_handler_exit(0);
+						}
+						handler_log(1, "t = %u", deviceState->t);
+						deviceState->fireValue=false;
+					]]>
+				</OnSend>
+			</OutputPin>
+				<ReadyToSend>
+					<![CDATA[ 
+						*readyToSend=0;
+						if(deviceState->fireValue){
+							*readyToSend |= RTS_FLAG_fire;
+						}
+					]]>
+				</ReadyToSend> 
+			</DeviceType>
+		</DeviceTypes> 
+	</GraphType> 
+	<GraphInstance id="barrier_10_output" graphTypeId="barrier_10"> 
+		<Properties> 
+			"max_t":100
+		</Properties>
+		<DeviceInstances>					<DevI id="n_0" type="neuron"><P>"a":0.02,"b":0.2,"v":-54.10922590762275,"u":7.847047514437977,"Ir":5.0,"fanin":10,"refractory":0,"seed":1052968588</P></DevI>
+			<DevI id="n_1" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.88485811992224,"u":5.8572492802620015,"Ir":5.0,"fanin":10,"refractory":0,"seed":1925527091</P></DevI>
+			<DevI id="n_2" type="neuron"><P>"a":0.02,"b":0.2,"v":-64.69679376580848,"u":4.25471888450889,"Ir":5.0,"fanin":10,"refractory":0,"seed":2462768976</P></DevI>
+			<DevI id="n_3" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.134319543707825,"u":7.292202475489083,"Ir":5.0,"fanin":10,"refractory":0,"seed":1354044933</P></DevI>
+			<DevI id="n_4" type="neuron"><P>"a":0.02,"b":0.2,"v":-61.05627873826772,"u":5.185987903619945,"Ir":5.0,"fanin":10,"refractory":0,"seed":2871057736</P></DevI>
+			<DevI id="n_5" type="neuron"><P>"a":0.02,"b":0.2,"v":-56.46834240272492,"u":7.8024229057516825,"Ir":5.0,"fanin":10,"refractory":0,"seed":2826406995</P></DevI>
+			<DevI id="n_6" type="neuron"><P>"a":0.02,"b":0.2,"v":-62.70451694753926,"u":7.967770771052147,"Ir":5.0,"fanin":10,"refractory":0,"seed":1443564729</P></DevI>
+			<DevI id="n_7" type="neuron"><P>"a":0.02,"b":0.2,"v":-59.078256359441596,"u":7.999012483734707,"Ir":5.0,"fanin":10,"refractory":0,"seed":3904783602</P></DevI>
+			<DevI id="n_8" type="neuron"><P>"a":0.07110406713944811,"b":0.2004103450124042,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":10,"refractory":0,"seed":762742104</P></DevI>
+			<DevI id="n_9" type="neuron"><P>"a":0.09935662182353736,"b":0.2277750039925463,"v":-65.0,"u":2.0,"Ir":2.0,"fanin":10,"refractory":0,"seed":1805420939</P></DevI>
+		</DeviceInstances>
+		<EdgeInstances>
+			<EdgeI path="n_0:input-n_0:fire"><P>"weight":0.05431041724080082</P></EdgeI>
+			<EdgeI path="n_0:input-n_1:fire"><P>"weight":0.03130438741415842</P></EdgeI>
+			<EdgeI path="n_0:input-n_2:fire"><P>"weight":0.17753072346393955</P></EdgeI>
+			<EdgeI path="n_0:input-n_3:fire"><P>"weight":0.04439445243368112</P></EdgeI>
+			<EdgeI path="n_0:input-n_4:fire"><P>"weight":0.2166001569385806</P></EdgeI>
+			<EdgeI path="n_0:input-n_5:fire"><P>"weight":0.004280607386434654</P></EdgeI>
+			<EdgeI path="n_0:input-n_6:fire"><P>"weight":0.26790050930328224</P></EdgeI>
+			<EdgeI path="n_0:input-n_7:fire"><P>"weight":0.03674199635752623</P></EdgeI>
+			<EdgeI path="n_0:input-n_8:fire"><P>"weight":0.3471029573496175</P></EdgeI>
+			<EdgeI path="n_0:input-n_9:fire"><P>"weight":-0.40420726708424737</P></EdgeI>
+			<EdgeI path="n_1:input-n_0:fire"><P>"weight":0.4926740874441637</P></EdgeI>
+			<EdgeI path="n_1:input-n_1:fire"><P>"weight":0.13127000985952497</P></EdgeI>
+			<EdgeI path="n_1:input-n_2:fire"><P>"weight":0.23625537020352166</P></EdgeI>
+			<EdgeI path="n_1:input-n_3:fire"><P>"weight":0.3754074706196346</P></EdgeI>
+			<EdgeI path="n_1:input-n_4:fire"><P>"weight":0.16741527026173314</P></EdgeI>
+			<EdgeI path="n_1:input-n_5:fire"><P>"weight":0.17418351033252572</P></EdgeI>
+			<EdgeI path="n_1:input-n_6:fire"><P>"weight":0.3195639686140564</P></EdgeI>
+			<EdgeI path="n_1:input-n_7:fire"><P>"weight":0.4848430386329389</P></EdgeI>
+			<EdgeI path="n_1:input-n_8:fire"><P>"weight":0.441940069061445</P></EdgeI>
+			<EdgeI path="n_1:input-n_9:fire"><P>"weight":-0.41903781938736506</P></EdgeI>
+			<EdgeI path="n_2:input-n_0:fire"><P>"weight":0.35885895367608034</P></EdgeI>
+			<EdgeI path="n_2:input-n_1:fire"><P>"weight":0.33952597582334343</P></EdgeI>
+			<EdgeI path="n_2:input-n_2:fire"><P>"weight":0.18605480964765264</P></EdgeI>
+			<EdgeI path="n_2:input-n_3:fire"><P>"weight":0.11748171874923258</P></EdgeI>
+			<EdgeI path="n_2:input-n_4:fire"><P>"weight":0.03918823907061264</P></EdgeI>
+			<EdgeI path="n_2:input-n_5:fire"><P>"weight":0.43945446844220964</P></EdgeI>
+			<EdgeI path="n_2:input-n_6:fire"><P>"weight":0.02857960670464832</P></EdgeI>
+			<EdgeI path="n_2:input-n_7:fire"><P>"weight":0.2593480623782001</P></EdgeI>
+			<EdgeI path="n_2:input-n_8:fire"><P>"weight":0.26876818875284403</P></EdgeI>
+			<EdgeI path="n_2:input-n_9:fire"><P>"weight":-0.14613923366160775</P></EdgeI>
+			<EdgeI path="n_3:input-n_0:fire"><P>"weight":0.3279658584760556</P></EdgeI>
+			<EdgeI path="n_3:input-n_1:fire"><P>"weight":0.45791159678695675</P></EdgeI>
+			<EdgeI path="n_3:input-n_2:fire"><P>"weight":0.38806648491201856</P></EdgeI>
+			<EdgeI path="n_3:input-n_3:fire"><P>"weight":0.19462963330927557</P></EdgeI>
+			<EdgeI path="n_3:input-n_4:fire"><P>"weight":0.06323497941687906</P></EdgeI>
+			<EdgeI path="n_3:input-n_5:fire"><P>"weight":0.4874647831086975</P></EdgeI>
+			<EdgeI path="n_3:input-n_6:fire"><P>"weight":0.25855174332695535</P></EdgeI>
+			<EdgeI path="n_3:input-n_7:fire"><P>"weight":0.3148088126137916</P></EdgeI>
+			<EdgeI path="n_3:input-n_8:fire"><P>"weight":0.40113832276051886</P></EdgeI>
+			<EdgeI path="n_3:input-n_9:fire"><P>"weight":-0.3862461628927458</P></EdgeI>
+			<EdgeI path="n_4:input-n_0:fire"><P>"weight":0.031027882327736955</P></EdgeI>
+			<EdgeI path="n_4:input-n_1:fire"><P>"weight":0.06800789555438075</P></EdgeI>
+			<EdgeI path="n_4:input-n_2:fire"><P>"weight":0.3342235685162706</P></EdgeI>
+			<EdgeI path="n_4:input-n_3:fire"><P>"weight":0.17476984280990016</P></EdgeI>
+			<EdgeI path="n_4:input-n_4:fire"><P>"weight":0.43553860388116916</P></EdgeI>
+			<EdgeI path="n_4:input-n_5:fire"><P>"weight":0.37008225441029796</P></EdgeI>
+			<EdgeI path="n_4:input-n_6:fire"><P>"weight":0.49021957334513305</P></EdgeI>
+			<EdgeI path="n_4:input-n_7:fire"><P>"weight":0.334417177182245</P></EdgeI>
+			<EdgeI path="n_4:input-n_8:fire"><P>"weight":0.15190288956839132</P></EdgeI>
+			<EdgeI path="n_4:input-n_9:fire"><P>"weight":-0.7911091579073943</P></EdgeI>
+			<EdgeI path="n_5:input-n_0:fire"><P>"weight":0.014129017139142053</P></EdgeI>
+			<EdgeI path="n_5:input-n_1:fire"><P>"weight":0.2607953858556461</P></EdgeI>
+			<EdgeI path="n_5:input-n_2:fire"><P>"weight":0.43569733394996296</P></EdgeI>
+			<EdgeI path="n_5:input-n_3:fire"><P>"weight":0.2573595701030578</P></EdgeI>
+			<EdgeI path="n_5:input-n_4:fire"><P>"weight":0.06868574896294949</P></EdgeI>
+			<EdgeI path="n_5:input-n_5:fire"><P>"weight":0.25006125533870427</P></EdgeI>
+			<EdgeI path="n_5:input-n_6:fire"><P>"weight":0.27272887053462175</P></EdgeI>
+			<EdgeI path="n_5:input-n_7:fire"><P>"weight":0.1845002741549323</P></EdgeI>
+			<EdgeI path="n_5:input-n_8:fire"><P>"weight":0.44671678010443344</P></EdgeI>
+			<EdgeI path="n_5:input-n_9:fire"><P>"weight":-0.3400808505181736</P></EdgeI>
+			<EdgeI path="n_6:input-n_0:fire"><P>"weight":0.13587569419226014</P></EdgeI>
+			<EdgeI path="n_6:input-n_1:fire"><P>"weight":0.2531507434071573</P></EdgeI>
+			<EdgeI path="n_6:input-n_2:fire"><P>"weight":0.10163602563178042</P></EdgeI>
+			<EdgeI path="n_6:input-n_3:fire"><P>"weight":0.161028613390582</P></EdgeI>
+			<EdgeI path="n_6:input-n_4:fire"><P>"weight":0.19908509046966089</P></EdgeI>
+			<EdgeI path="n_6:input-n_5:fire"><P>"weight":0.4691312443485385</P></EdgeI>
+			<EdgeI path="n_6:input-n_6:fire"><P>"weight":0.040180906489962864</P></EdgeI>
+			<EdgeI path="n_6:input-n_7:fire"><P>"weight":0.09854743445340919</P></EdgeI>
+			<EdgeI path="n_6:input-n_8:fire"><P>"weight":0.099749672256839</P></EdgeI>
+			<EdgeI path="n_6:input-n_9:fire"><P>"weight":-0.9952650136580005</P></EdgeI>
+			<EdgeI path="n_7:input-n_0:fire"><P>"weight":0.4454043508215259</P></EdgeI>
+			<EdgeI path="n_7:input-n_1:fire"><P>"weight":0.0970816473225124</P></EdgeI>
+			<EdgeI path="n_7:input-n_2:fire"><P>"weight":0.28231224503713853</P></EdgeI>
+			<EdgeI path="n_7:input-n_3:fire"><P>"weight":0.042550014704845374</P></EdgeI>
+			<EdgeI path="n_7:input-n_4:fire"><P>"weight":0.15851410137020389</P></EdgeI>
+			<EdgeI path="n_7:input-n_5:fire"><P>"weight":0.17057212276210898</P></EdgeI>
+			<EdgeI path="n_7:input-n_6:fire"><P>"weight":0.2688409989083842</P></EdgeI>
+			<EdgeI path="n_7:input-n_7:fire"><P>"weight":0.4646871607397117</P></EdgeI>
+			<EdgeI path="n_7:input-n_8:fire"><P>"weight":0.40450971549546816</P></EdgeI>
+			<EdgeI path="n_7:input-n_9:fire"><P>"weight":-0.5341834137994497</P></EdgeI>
+			<EdgeI path="n_8:input-n_0:fire"><P>"weight":0.3930400271039191</P></EdgeI>
+			<EdgeI path="n_8:input-n_1:fire"><P>"weight":0.24197951887654862</P></EdgeI>
+			<EdgeI path="n_8:input-n_2:fire"><P>"weight":0.36528016402705055</P></EdgeI>
+			<EdgeI path="n_8:input-n_3:fire"><P>"weight":0.38847722123646955</P></EdgeI>
+			<EdgeI path="n_8:input-n_4:fire"><P>"weight":0.128425869024408</P></EdgeI>
+			<EdgeI path="n_8:input-n_5:fire"><P>"weight":0.41638852219367656</P></EdgeI>
+			<EdgeI path="n_8:input-n_6:fire"><P>"weight":0.28897208670955776</P></EdgeI>
+			<EdgeI path="n_8:input-n_7:fire"><P>"weight":0.2430599791576033</P></EdgeI>
+			<EdgeI path="n_8:input-n_8:fire"><P>"weight":0.19790665773487937</P></EdgeI>
+			<EdgeI path="n_8:input-n_9:fire"><P>"weight":-0.22414980709806243</P></EdgeI>
+			<EdgeI path="n_9:input-n_0:fire"><P>"weight":0.2506287765687666</P></EdgeI>
+			<EdgeI path="n_9:input-n_1:fire"><P>"weight":0.06305311474856318</P></EdgeI>
+			<EdgeI path="n_9:input-n_2:fire"><P>"weight":0.31739137696460124</P></EdgeI>
+			<EdgeI path="n_9:input-n_3:fire"><P>"weight":0.4491341255373835</P></EdgeI>
+			<EdgeI path="n_9:input-n_4:fire"><P>"weight":0.39526301473825165</P></EdgeI>
+			<EdgeI path="n_9:input-n_5:fire"><P>"weight":0.30457889277618866</P></EdgeI>
+			<EdgeI path="n_9:input-n_6:fire"><P>"weight":0.24723721050990577</P></EdgeI>
+			<EdgeI path="n_9:input-n_7:fire"><P>"weight":0.3478910870277279</P></EdgeI>
+			<EdgeI path="n_9:input-n_8:fire"><P>"weight":0.061158160460254685</P></EdgeI>
+			<EdgeI path="n_9:input-n_9:fire"><P>"weight":-0.05243537098650408</P></EdgeI>
+		</EdgeInstances>
+	</GraphInstance>
+</Graphs>

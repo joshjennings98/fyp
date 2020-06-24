@@ -1,4 +1,11 @@
 network_generator/__pycache__/
 network_generator/__pycache__/neuronGenerator.cpython-36.pyc
 output/
-*.xml
+none_10000.xml
+gals_10000.xml
+clocked_10000.xml
+extreme_10000.xml
+barrier_10000.xml
+clocked_1000000_100.xml
+clocked_100000_sparse.xml
+gals_100000_sparse.xml

@@ -1,0 +1,9 @@
+
+test 14 (None, 1000, Fully Connected):
+
+waiting for all externals... done
+[10199] APPL / device (32512)=n_772 / send / fire  : _HANDLER_EXIT_SUCCESS_9be65737_ 
+ application exited status(0)
+ WARNING: handler_exit function is set for deprecation, application exit in future will be performed via application_pins
+37.06user 70.42system 2:04.04elapsed 86%CPU (0avgtext+0avgdata 13204maxresident)k
+0inputs+3768outputs (0major+4048minor)pagefaults 0swaps

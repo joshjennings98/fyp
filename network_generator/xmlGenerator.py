@@ -61,7 +61,7 @@ def devicesGenGALS(properties : str, states : str, inits : str, assignments : st
 \t\t\t\t\t<OnSend>
 \t\t\t\t\t\t<![CDATA[  
 \t\t\t\t\t\tdeviceState->message_count++;
-\t\t\t\t\t\thandler_log(1, "%d", deviceState->message_count);
+\t\t\t\t\t\t//handler_log(1, "%d", deviceState->message_count);
 \t\t\t\t\t\t// Assignments
 \t\t{assignments}
 \t\t\t\t\t\tfloat &I = deviceState->I; // Assign I\n
@@ -1202,6 +1202,7 @@ def devicesGenBarrier(properties : str, states : str, inits : str, assignments :
 \t\t\t\t\t<![CDATA[
 \t\t\t\t\t// Initialise state values
 \t\t{inits}\n
+handler_log(1, "test init");
 \t\t\t\t\tdeviceState->rng = deviceProperties->seed;
 \t\t\t\t\tdeviceState->I=deviceProperties->Ir * grng(deviceState->rng);
 \t\t\t\t\tdeviceState->Icount=0;
@@ -1212,7 +1213,8 @@ def devicesGenBarrier(properties : str, states : str, inits : str, assignments :
 \t\t\t\t\t<Scalar name="weight" type="float"/> 
 \t\t\t\t\t</Properties> 
 \t\t\t\t\t<OnReceive>
-\t\t\t\t\t\t<![CDATA[ 
+\t\t\t\t\t\t<![CDATA[
+handler_log(1, "TEST");
 \t\t\t\t\t\t\tdeviceState->Icount++;
 \t\t\t\t\t\t\tdeviceState->I += edgeProperties->weight;
 \t\t\t\t\t\t]]>
@@ -1225,8 +1227,9 @@ def devicesGenBarrier(properties : str, states : str, inits : str, assignments :
 \t\t\t\t\t\t{equations}
 \t\t\t\t\t\tdeviceState->t++;
 \t\t\t\t\t\tbool fire = {threshold};
+handler_log(1, "v=%f", devicesState->v);
 \t\t\t\t\t\tif(fire){{
-\t\t\t\t\t\t\t handler_log(1, "FIRE! %i", deviceState->t);
+\t\t\t\t\t\t\t //handler_log(1, "FIRE! %i", deviceState->t);
 \t\t\t\t\t\t\t// handler_log(1, "v = %f", deviceState->v);
 \t\t\t\t\t\t\t{onReset}
 \t\t\t\t\t\t}}

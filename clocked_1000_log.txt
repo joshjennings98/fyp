@@ -1,0 +1,10 @@
+
+test 5 (Clocked, 1000, Fully Connected):
+
+waiting for all externals... done
+[1292] APPL / device (32512)=clock / send / tick  : final count = 17979 
+[1292] APPL / device (32512)=clock / send / tick  : _HANDLER_EXIT_SUCCESS_9be65737_ 
+ application exited status(0)
+ WARNING: handler_exit function is set for deprecation, application exit in future will be performed via application_pins
+99.52user 131.67system 4:08.27elapsed 93%CPU (0avgtext+0avgdata 13076maxresident)k
+0inputs+3776outputs (0major+4052minor)pagefaults 0swaps

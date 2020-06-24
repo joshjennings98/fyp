@@ -22,7 +22,7 @@ b = 0.2,
 v = -65.0 + 15.0 * R * R,
 u = 8.0 - 6.0 * R * R,
 Ir = 5.0,
-property = fanin = 100,
+property = fanin = 800,
 fraction = 0.8,
 refractory = 0,
 connectionProb = 1;
@@ -33,13 +33,13 @@ b = 0.25 - 0.05 * R,
 v = -65.0,
 u = 2.0,
 Ir = 2.0,
-property = fanin = 100,
+property = fanin = 800,
 fraction = 0.2,
 refractory = 0,
 connectionProb = 1;
 
 number:
-100;
+800;
 
 maxt:
 1000;

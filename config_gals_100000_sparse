@@ -1,0 +1,48 @@
+name: 
+gals_100000_sparse;
+
+equations:
+v += 0.04 * v * v + 5 * v + 140 - u + I,
+u += a * (b * v - u);
+
+threshold:
+v >= 30;
+
+reset:
+v = v,
+u += u;
+
+init:
+v = -65,
+u = v * b;
+
+parameters 1:
+a = 0.02,
+b = 0.2,
+v = -65.0 + 15.0 * R * R,
+u = 8.0 - 6.0 * R * R,
+Ir = 5.0,
+property = fanin = 100,
+fraction = 0.8,
+refractory = 0,
+connectionProb = 0.001;
+
+parameters 2:
+a = 0.02 + 0.08 * R,
+b = 0.25 - 0.05 * R,
+v = -65.0,
+u = 2.0,
+Ir = 2.0,
+property = fanin = 100,
+fraction = 0.2,
+refractory = 0,
+connectionProb = 0.001;
+
+number:
+100000;
+
+maxt:
+1000;
+
+type:
+gals

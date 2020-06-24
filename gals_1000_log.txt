@@ -1,0 +1,13 @@
+
+test 2 (GALS, 1000, Fully Connected):
+
+waiting for all externals... done
+[8229] APPL / device (32512)=n_9 / send / fire  : Total messages 1001 
+[8216] APPL / device (32512)=n_275 / send / fire  : Total messages 1001 
+[8216] APPL / device (32512)=n_275 / send / fire  : _HANDLER_EXIT_SUCCESS_9be65737_ 
+[8223] APPL / device (32512)=n_673 / send / fire  : Total messages 1001 
+[8223] APPL / device (32512)=n_673 / send / fire  : _HANDLER_EXIT_SUCCESS_9be65737_ 
+ application exited status(0)
+ WARNING: handler_exit function is set for deprecation, application exit in future will be performed via application_pins
+106.91user 142.54system 4:26.38elapsed 93%CPU (0avgtext+0avgdata 12976maxresident)k
+0inputs+3768outputs (0major+4045minor)pagefaults 0swaps

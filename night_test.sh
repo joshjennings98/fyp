@@ -4,8 +4,8 @@
 
 # set times here
 now=$(date +%s)
-startTime=$(date -d '05/30/2020 14:02:00' +%s)
-timeoutTime=$(date -d '05/30/2020 14:59:00' +%s)
+startTime=$(date -d '06/01/2020 12:00:00' +%s)
+timeoutTime=$(date -d '06/01/2020 19:50:00' +%s)
 
 sleep $(( $startTime - $now )) # wait till start time
 

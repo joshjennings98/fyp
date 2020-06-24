@@ -1,0 +1,3 @@
+
+test 12 (Extreme, 10000, Fully Connected):
+

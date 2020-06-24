@@ -1,0 +1,288 @@
+lib2to3.main: Output in '/home/joshuajennings98/poets-ecosystem/submodules/graph_schema/tools' will mirror the input directory '/home/joshuajennings98/poets-ecosystem/submodules/tinsel' layout.
+RefactoringTool: Skipping optional fixer: buffer
+RefactoringTool: Skipping optional fixer: idioms
+RefactoringTool: Skipping optional fixer: set_literal
+RefactoringTool: Skipping optional fixer: ws_comma
+RefactoringTool: Refactored /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py
+RefactoringTool: Writing converted /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py to /home/joshuajennings98/poets-ecosystem/submodules/graph_schema/tools/config.py.
+RefactoringTool: Files that were modified:
+RefactoringTool: /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py
+Reading graph type from 'gals_100.xml'
+Using absolute path '/home/joshuajennings98/fyp/gals_100.xml' for pre-processor directives
+Using absolute path '/tmp/tmp.wjDCg68Be4/gals_100.hpp' for header pre-processor directives
+Using absolute path '/tmp/tmp.wjDCg68Be4/gals_100_vtables.cpp' for source pre-processor directives
+INFO:root:Generating random partition from seed 1.
+In file included from /tmp/tmp.wjDCg68Be4/gals_100.hpp:8:0,
+                 from /tmp/tmp.wjDCg68Be4/gals_100_gals_100_output_inst.cpp:2:
+/home/joshuajennings98/poets-ecosystem/submodules/toy_softswitch/include/softswitch_hostmessaging.hpp:24:24: warning: 'PThreadContext* softswitch_getCtxt()' defined but not used [-Wunused-function]
+ static PThreadContext *softswitch_getCtxt()
+                        ^~~~~~~~~~~~~~~~~~
+/tmp/tmp.wjDCg68Be4/gals_100_vtables.cpp: In function 'float squareroot(float)':
+/tmp/tmp.wjDCg68Be4/gals_100_vtables.cpp:138:39: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+    unsigned int i = *(unsigned int*) &x;
+                                       ^
+/tmp/tmp.wjDCg68Be4/gals_100_vtables.cpp:143:22: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+    return *(float*) &i;
+                      ^
+/tmp/tmp.wjDCg68Be4/gals_100_vtables.cpp: In function 'float cosine(float)':
+/tmp/tmp.wjDCg68Be4/gals_100_vtables.cpp:115:1: warning: control reaches end of non-void function [-Wreturn-type]
+ }
+ ^
+
+real	0m4.018s
+user	0m3.617s
+sys	0m0.337s
+4.40user 0.39system 0:04.89elapsed 97%CPU (0avgtext+0avgdata 226176maxresident)k
+55664inputs+116424outputs (214major+168362minor)pagefaults 0swaps
+lib2to3.main: Output in '/home/joshuajennings98/poets-ecosystem/submodules/graph_schema/tools' will mirror the input directory '/home/joshuajennings98/poets-ecosystem/submodules/tinsel' layout.
+RefactoringTool: Skipping optional fixer: buffer
+RefactoringTool: Skipping optional fixer: idioms
+RefactoringTool: Skipping optional fixer: set_literal
+RefactoringTool: Skipping optional fixer: ws_comma
+RefactoringTool: Refactored /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py
+RefactoringTool: Writing converted /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py to /home/joshuajennings98/poets-ecosystem/submodules/graph_schema/tools/config.py.
+RefactoringTool: Files that were modified:
+RefactoringTool: /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py
+Reading graph type from 'gals_1000.xml'
+Using absolute path '/home/joshuajennings98/fyp/gals_1000.xml' for pre-processor directives
+Using absolute path '/tmp/tmp.G9HkNFJUnr/gals_1000.hpp' for header pre-processor directives
+Using absolute path '/tmp/tmp.G9HkNFJUnr/gals_1000_vtables.cpp' for source pre-processor directives
+INFO:root:Generating random partition from seed 1.
+/tmp/tmp.G9HkNFJUnr/gals_1000_vtables.cpp: In function 'float squareroot(float)':
+/tmp/tmp.G9HkNFJUnr/gals_1000_vtables.cpp:138:39: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+    unsigned int i = *(unsigned int*) &x;
+                                       ^
+/tmp/tmp.G9HkNFJUnr/gals_1000_vtables.cpp:143:22: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+    return *(float*) &i;
+                      ^
+/tmp/tmp.G9HkNFJUnr/gals_1000_vtables.cpp: In function 'float cosine(float)':
+/tmp/tmp.G9HkNFJUnr/gals_1000_vtables.cpp:115:1: warning: control reaches end of non-void function [-Wreturn-type]
+ }
+ ^
+In file included from /tmp/tmp.G9HkNFJUnr/gals_1000.hpp:8:0,
+                 from /tmp/tmp.G9HkNFJUnr/gals_1000_gals_1000_output_inst.cpp:2:
+/home/joshuajennings98/poets-ecosystem/submodules/toy_softswitch/include/softswitch_hostmessaging.hpp:24:24: warning: 'PThreadContext* softswitch_getCtxt()' defined but not used [-Wunused-function]
+ static PThreadContext *softswitch_getCtxt()
+                        ^~~~~~~~~~~~~~~~~~
+
+real	2m27.511s
+user	2m23.402s
+sys	0m3.737s
+172.64user 4.54system 2:57.60elapsed 99%CPU (0avgtext+0avgdata 5970584maxresident)k
+64inputs+3626160outputs (0major+3257250minor)pagefaults 0swaps
+lib2to3.main: Output in '/home/joshuajennings98/poets-ecosystem/submodules/graph_schema/tools' will mirror the input directory '/home/joshuajennings98/poets-ecosystem/submodules/tinsel' layout.
+RefactoringTool: Skipping optional fixer: buffer
+RefactoringTool: Skipping optional fixer: idioms
+RefactoringTool: Skipping optional fixer: set_literal
+RefactoringTool: Skipping optional fixer: ws_comma
+RefactoringTool: Refactored /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py
+RefactoringTool: Writing converted /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py to /home/joshuajennings98/poets-ecosystem/submodules/graph_schema/tools/config.py.
+RefactoringTool: Files that were modified:
+RefactoringTool: /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py
+Reading graph type from 'clocked_100.xml'
+Using absolute path '/home/joshuajennings98/fyp/clocked_100.xml' for pre-processor directives
+Using absolute path '/tmp/tmp.DuIbSjYBq0/clocked_100.hpp' for header pre-processor directives
+Using absolute path '/tmp/tmp.DuIbSjYBq0/clocked_100_vtables.cpp' for source pre-processor directives
+INFO:root:Generating random partition from seed 1.
+In file included from /tmp/tmp.DuIbSjYBq0/clocked_100.hpp:8:0,
+                 from /tmp/tmp.DuIbSjYBq0/clocked_100_clocked_100_output_inst.cpp:2:
+/home/joshuajennings98/poets-ecosystem/submodules/toy_softswitch/include/softswitch_hostmessaging.hpp:24:24: warning: 'PThreadContext* softswitch_getCtxt()' defined but not used [-Wunused-function]
+ static PThreadContext *softswitch_getCtxt()
+                        ^~~~~~~~~~~~~~~~~~
+/tmp/tmp.DuIbSjYBq0/clocked_100_vtables.cpp: In function 'float squareroot(float)':
+/tmp/tmp.DuIbSjYBq0/clocked_100_vtables.cpp:160:39: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+    unsigned int i = *(unsigned int*) &x;
+                                       ^
+/tmp/tmp.DuIbSjYBq0/clocked_100_vtables.cpp:165:22: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+    return *(float*) &i;
+                      ^
+/tmp/tmp.DuIbSjYBq0/clocked_100_vtables.cpp: In function 'float cosine(float)':
+/tmp/tmp.DuIbSjYBq0/clocked_100_vtables.cpp:137:1: warning: control reaches end of non-void function [-Wreturn-type]
+ }
+ ^
+
+real	0m4.006s
+user	0m3.656s
+sys	0m0.330s
+4.46user 0.39system 0:04.87elapsed 99%CPU (0avgtext+0avgdata 226720maxresident)k
+24inputs+117088outputs (0major+167052minor)pagefaults 0swaps
+lib2to3.main: Output in '/home/joshuajennings98/poets-ecosystem/submodules/graph_schema/tools' will mirror the input directory '/home/joshuajennings98/poets-ecosystem/submodules/tinsel' layout.
+RefactoringTool: Skipping optional fixer: buffer
+RefactoringTool: Skipping optional fixer: idioms
+RefactoringTool: Skipping optional fixer: set_literal
+RefactoringTool: Skipping optional fixer: ws_comma
+RefactoringTool: Refactored /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py
+RefactoringTool: Writing converted /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py to /home/joshuajennings98/poets-ecosystem/submodules/graph_schema/tools/config.py.
+RefactoringTool: Files that were modified:
+RefactoringTool: /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py
+Reading graph type from 'clocked_1000.xml'
+Using absolute path '/home/joshuajennings98/fyp/clocked_1000.xml' for pre-processor directives
+Using absolute path '/tmp/tmp.NiySwKp2q5/clocked_1000.hpp' for header pre-processor directives
+Using absolute path '/tmp/tmp.NiySwKp2q5/clocked_1000_vtables.cpp' for source pre-processor directives
+INFO:root:Generating random partition from seed 1.
+/tmp/tmp.NiySwKp2q5/clocked_1000_vtables.cpp: In function 'float squareroot(float)':
+/tmp/tmp.NiySwKp2q5/clocked_1000_vtables.cpp:160:39: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+    unsigned int i = *(unsigned int*) &x;
+                                       ^
+/tmp/tmp.NiySwKp2q5/clocked_1000_vtables.cpp:165:22: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+    return *(float*) &i;
+                      ^
+/tmp/tmp.NiySwKp2q5/clocked_1000_vtables.cpp: In function 'float cosine(float)':
+/tmp/tmp.NiySwKp2q5/clocked_1000_vtables.cpp:137:1: warning: control reaches end of non-void function [-Wreturn-type]
+ }
+ ^
+In file included from /tmp/tmp.NiySwKp2q5/clocked_1000.hpp:8:0,
+                 from /tmp/tmp.NiySwKp2q5/clocked_1000_clocked_1000_output_inst.cpp:2:
+/home/joshuajennings98/poets-ecosystem/submodules/toy_softswitch/include/softswitch_hostmessaging.hpp:24:24: warning: 'PThreadContext* softswitch_getCtxt()' defined but not used [-Wunused-function]
+ static PThreadContext *softswitch_getCtxt()
+                        ^~~~~~~~~~~~~~~~~~
+
+real	2m20.902s
+user	2m16.567s
+sys	0m3.970s
+165.97user 4.77system 2:51.14elapsed 99%CPU (0avgtext+0avgdata 5977180maxresident)k
+48inputs+3646616outputs (0major+3227703minor)pagefaults 0swaps
+lib2to3.main: Output in '/home/joshuajennings98/poets-ecosystem/submodules/graph_schema/tools' will mirror the input directory '/home/joshuajennings98/poets-ecosystem/submodules/tinsel' layout.
+RefactoringTool: Skipping optional fixer: buffer
+RefactoringTool: Skipping optional fixer: idioms
+RefactoringTool: Skipping optional fixer: set_literal
+RefactoringTool: Skipping optional fixer: ws_comma
+RefactoringTool: Refactored /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py
+RefactoringTool: Writing converted /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py to /home/joshuajennings98/poets-ecosystem/submodules/graph_schema/tools/config.py.
+RefactoringTool: Files that were modified:
+RefactoringTool: /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py
+Reading graph type from 'extreme_100.xml'
+Using absolute path '/home/joshuajennings98/fyp/extreme_100.xml' for pre-processor directives
+Using absolute path '/tmp/tmp.JJC0CjCW5d/extreme_100.hpp' for header pre-processor directives
+Using absolute path '/tmp/tmp.JJC0CjCW5d/extreme_100_vtables.cpp' for source pre-processor directives
+INFO:root:Generating random partition from seed 1.
+In file included from /tmp/tmp.JJC0CjCW5d/extreme_100.hpp:8:0,
+                 from /tmp/tmp.JJC0CjCW5d/extreme_100_extreme_100_output_inst.cpp:2:
+/home/joshuajennings98/poets-ecosystem/submodules/toy_softswitch/include/softswitch_hostmessaging.hpp:24:24: warning: 'PThreadContext* softswitch_getCtxt()' defined but not used [-Wunused-function]
+ static PThreadContext *softswitch_getCtxt()
+                        ^~~~~~~~~~~~~~~~~~
+/tmp/tmp.JJC0CjCW5d/extreme_100_vtables.cpp: In function 'float squareroot(float)':
+/tmp/tmp.JJC0CjCW5d/extreme_100_vtables.cpp:137:39: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+    unsigned int i = *(unsigned int*) &x;
+                                       ^
+/tmp/tmp.JJC0CjCW5d/extreme_100_vtables.cpp:142:22: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+    return *(float*) &i;
+                      ^
+/tmp/tmp.JJC0CjCW5d/extreme_100_vtables.cpp: In function 'float cosine(float)':
+/tmp/tmp.JJC0CjCW5d/extreme_100_vtables.cpp:114:1: warning: control reaches end of non-void function [-Wreturn-type]
+ }
+ ^
+
+real	0m4.019s
+user	0m3.718s
+sys	0m0.281s
+4.53user 0.36system 0:04.92elapsed 99%CPU (0avgtext+0avgdata 226012maxresident)k
+8inputs+116376outputs (0major+166404minor)pagefaults 0swaps
+lib2to3.main: Output in '/home/joshuajennings98/poets-ecosystem/submodules/graph_schema/tools' will mirror the input directory '/home/joshuajennings98/poets-ecosystem/submodules/tinsel' layout.
+RefactoringTool: Skipping optional fixer: buffer
+RefactoringTool: Skipping optional fixer: idioms
+RefactoringTool: Skipping optional fixer: set_literal
+RefactoringTool: Skipping optional fixer: ws_comma
+RefactoringTool: Refactored /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py
+RefactoringTool: Writing converted /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py to /home/joshuajennings98/poets-ecosystem/submodules/graph_schema/tools/config.py.
+RefactoringTool: Files that were modified:
+RefactoringTool: /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py
+Reading graph type from 'extreme_1000.xml'
+Using absolute path '/home/joshuajennings98/fyp/extreme_1000.xml' for pre-processor directives
+Using absolute path '/tmp/tmp.QgCamAd2Sp/extreme_1000.hpp' for header pre-processor directives
+Using absolute path '/tmp/tmp.QgCamAd2Sp/extreme_1000_vtables.cpp' for source pre-processor directives
+INFO:root:Generating random partition from seed 1.
+/tmp/tmp.QgCamAd2Sp/extreme_1000_vtables.cpp: In function 'float squareroot(float)':
+/tmp/tmp.QgCamAd2Sp/extreme_1000_vtables.cpp:137:39: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+    unsigned int i = *(unsigned int*) &x;
+                                       ^
+/tmp/tmp.QgCamAd2Sp/extreme_1000_vtables.cpp:142:22: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+    return *(float*) &i;
+                      ^
+/tmp/tmp.QgCamAd2Sp/extreme_1000_vtables.cpp: In function 'float cosine(float)':
+/tmp/tmp.QgCamAd2Sp/extreme_1000_vtables.cpp:114:1: warning: control reaches end of non-void function [-Wreturn-type]
+ }
+ ^
+In file included from /tmp/tmp.QgCamAd2Sp/extreme_1000.hpp:8:0,
+                 from /tmp/tmp.QgCamAd2Sp/extreme_1000_extreme_1000_output_inst.cpp:2:
+/home/joshuajennings98/poets-ecosystem/submodules/toy_softswitch/include/softswitch_hostmessaging.hpp:24:24: warning: 'PThreadContext* softswitch_getCtxt()' defined but not used [-Wunused-function]
+ static PThreadContext *softswitch_getCtxt()
+                        ^~~~~~~~~~~~~~~~~~
+
+real	2m13.662s
+user	2m9.317s
+sys	0m3.954s
+159.08user 4.98system 2:44.50elapsed 99%CPU (0avgtext+0avgdata 5970980maxresident)k
+8inputs+3626264outputs (0major+3273257minor)pagefaults 0swaps
+lib2to3.main: Output in '/home/joshuajennings98/poets-ecosystem/submodules/graph_schema/tools' will mirror the input directory '/home/joshuajennings98/poets-ecosystem/submodules/tinsel' layout.
+RefactoringTool: Skipping optional fixer: buffer
+RefactoringTool: Skipping optional fixer: idioms
+RefactoringTool: Skipping optional fixer: set_literal
+RefactoringTool: Skipping optional fixer: ws_comma
+RefactoringTool: Refactored /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py
+RefactoringTool: Writing converted /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py to /home/joshuajennings98/poets-ecosystem/submodules/graph_schema/tools/config.py.
+RefactoringTool: Files that were modified:
+RefactoringTool: /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py
+Reading graph type from 'none_100.xml'
+Using absolute path '/home/joshuajennings98/fyp/none_100.xml' for pre-processor directives
+Using absolute path '/tmp/tmp.zr3LgDpiXe/none_100.hpp' for header pre-processor directives
+Using absolute path '/tmp/tmp.zr3LgDpiXe/none_100_vtables.cpp' for source pre-processor directives
+INFO:root:Generating random partition from seed 1.
+/tmp/tmp.zr3LgDpiXe/none_100_vtables.cpp: In function 'float squareroot(float)':
+/tmp/tmp.zr3LgDpiXe/none_100_vtables.cpp:138:39: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+    unsigned int i = *(unsigned int*) &x;
+                                       ^
+/tmp/tmp.zr3LgDpiXe/none_100_vtables.cpp:143:22: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+    return *(float*) &i;
+                      ^
+/tmp/tmp.zr3LgDpiXe/none_100_vtables.cpp: In function 'float cosine(float)':
+/tmp/tmp.zr3LgDpiXe/none_100_vtables.cpp:115:1: warning: control reaches end of non-void function [-Wreturn-type]
+ }
+ ^
+In file included from /tmp/tmp.zr3LgDpiXe/none_100.hpp:8:0,
+                 from /tmp/tmp.zr3LgDpiXe/none_100_none_100_output_inst.cpp:2:
+/home/joshuajennings98/poets-ecosystem/submodules/toy_softswitch/include/softswitch_hostmessaging.hpp:24:24: warning: 'PThreadContext* softswitch_getCtxt()' defined but not used [-Wunused-function]
+ static PThreadContext *softswitch_getCtxt()
+                        ^~~~~~~~~~~~~~~~~~
+
+real	0m4.044s
+user	0m3.739s
+sys	0m0.302s
+4.53user 0.37system 0:04.91elapsed 99%CPU (0avgtext+0avgdata 226076maxresident)k
+0inputs+116344outputs (0major+166220minor)pagefaults 0swaps
+lib2to3.main: Output in '/home/joshuajennings98/poets-ecosystem/submodules/graph_schema/tools' will mirror the input directory '/home/joshuajennings98/poets-ecosystem/submodules/tinsel' layout.
+RefactoringTool: Skipping optional fixer: buffer
+RefactoringTool: Skipping optional fixer: idioms
+RefactoringTool: Skipping optional fixer: set_literal
+RefactoringTool: Skipping optional fixer: ws_comma
+RefactoringTool: Refactored /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py
+RefactoringTool: Writing converted /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py to /home/joshuajennings98/poets-ecosystem/submodules/graph_schema/tools/config.py.
+RefactoringTool: Files that were modified:
+RefactoringTool: /home/joshuajennings98/poets-ecosystem/submodules/tinsel/config.py
+Reading graph type from 'none_1000.xml'
+Using absolute path '/home/joshuajennings98/fyp/none_1000.xml' for pre-processor directives
+Using absolute path '/tmp/tmp.UkC9yZU7H2/none_1000.hpp' for header pre-processor directives
+Using absolute path '/tmp/tmp.UkC9yZU7H2/none_1000_vtables.cpp' for source pre-processor directives
+INFO:root:Generating random partition from seed 1.
+/tmp/tmp.UkC9yZU7H2/none_1000_vtables.cpp: In function 'float squareroot(float)':
+/tmp/tmp.UkC9yZU7H2/none_1000_vtables.cpp:138:39: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+    unsigned int i = *(unsigned int*) &x;
+                                       ^
+/tmp/tmp.UkC9yZU7H2/none_1000_vtables.cpp:143:22: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+    return *(float*) &i;
+                      ^
+/tmp/tmp.UkC9yZU7H2/none_1000_vtables.cpp: In function 'float cosine(float)':
+/tmp/tmp.UkC9yZU7H2/none_1000_vtables.cpp:115:1: warning: control reaches end of non-void function [-Wreturn-type]
+ }
+ ^
+In file included from /tmp/tmp.UkC9yZU7H2/none_1000.hpp:8:0,
+                 from /tmp/tmp.UkC9yZU7H2/none_1000_none_1000_output_inst.cpp:2:
+/home/joshuajennings98/poets-ecosystem/submodules/toy_softswitch/include/softswitch_hostmessaging.hpp:24:24: warning: 'PThreadContext* softswitch_getCtxt()' defined but not used [-Wunused-function]
+ static PThreadContext *softswitch_getCtxt()
+                        ^~~~~~~~~~~~~~~~~~
+
+real	2m15.088s
+user	2m10.623s
+sys	0m4.068s
+160.41user 4.97system 2:45.81elapsed 99%CPU (0avgtext+0avgdata 5970908maxresident)k
+0inputs+3626056outputs (0major+3258139minor)pagefaults 0swaps

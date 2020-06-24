@@ -1,0 +1,3 @@
+
+test 6 (Clocked, 10000, Fully Connected):
+

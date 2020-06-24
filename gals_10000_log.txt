@@ -1,0 +1,3 @@
+
+test 3 (GALS, 10000, Fully Connected):
+

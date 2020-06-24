@@ -1,0 +1,7 @@
+
+test 11 (Extreme, 1000, Fully Connected):
+
+waiting for all externals... done
+Command terminated by signal 15
+21.40user 55.32system 1:33.81elapsed 81%CPU (0avgtext+0avgdata 13304maxresident)k
+0inputs+3752outputs (0major+4025minor)pagefaults 0swaps
